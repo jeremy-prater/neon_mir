@@ -2,6 +2,10 @@ cmake_minimum_required (VERSION 3.1)
 
 set (PROJ_NAME neon-mir)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 project (${PROJ_NAME})
 
 # for finding libraries
@@ -16,6 +20,8 @@ include_directories("${PROJECT_SOURCE_DIR}")
 # Source Files
 set(NEON_MIR_SRC
   ${PROJECT_SOURCE_DIR}/src/debuglogger.cpp
+  ${PROJECT_SOURCE_DIR}/src/session-header.cpp
+  ${PROJECT_SOURCE_DIR}/src/audio-session.cpp
   ${PROJECT_SOURCE_DIR}/src/test1.cpp
 )
 
