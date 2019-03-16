@@ -1,0 +1,6 @@
+[submodule "essentia"]
+	path = essentia
+	url = git@github.com:MTG/essentia.git
+[submodule "gaia"]
+	path = gaia
+	url = git@github.com:MTG/gaia.git
