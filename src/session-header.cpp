@@ -11,9 +11,9 @@ NeonSessionHeader::NeonSessionHeader(const std::string sessID)
 NeonSessionHeader::~NeonSessionHeader() {}
 
 void NeonSessionHeader::parse(const std::string &data) {
+  sessionID = data;
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Parsing [%s]",
                   data.c_str());
-  sessionID = data;
 }
 
 void NeonSessionHeader::write(std::ostream &stream) const {

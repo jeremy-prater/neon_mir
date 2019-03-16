@@ -1,9 +1,11 @@
+#pragma once
+
 #include "audio-session.hpp"
+#include "core-handler.hpp"
 #include "debuglogger.hpp"
 #include "session-header.hpp"
 #include <boost/uuid/uuid_io.hpp>
 #include <pistache/endpoint.h>
-#include <pistache/router.h>
 
 using namespace Pistache;
 
@@ -12,12 +14,18 @@ public:
   NeonMIR();
   ~NeonMIR();
 
-private:
+  static NeonMIR *getInstance();
 
+  void StartServer();
+  void Shutdown();
+
+private:
   DebugLogger logger;
+
+  static NeonMIR *instance;
 
   std::shared_ptr<Http::Endpoint> server;
 
-  Http::Endpoint::Options server_options;
-  Http::Router router
+  std::shared_ptr<CoreHandler> coreHandler;
+
 };

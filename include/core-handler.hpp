@@ -1,3 +1,5 @@
+#pragma once
+
 #include "debuglogger.hpp"
 #include <pistache/endpoint.h>
 

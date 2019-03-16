@@ -22,7 +22,8 @@ set(NEON_MIR_SRC
   ${PROJECT_SOURCE_DIR}/src/debuglogger.cpp
   ${PROJECT_SOURCE_DIR}/src/session-header.cpp
   ${PROJECT_SOURCE_DIR}/src/audio-session.cpp
-  ${PROJECT_SOURCE_DIR}/src/test1.cpp
+  ${PROJECT_SOURCE_DIR}/src/core-handler.cpp
+  ${PROJECT_SOURCE_DIR}/src/neon-mir.cpp
 )
 
 # Define the output executable
