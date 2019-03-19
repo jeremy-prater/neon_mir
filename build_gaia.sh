@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cd gaia
-./waf configure --with-asserts
-./waf
-sudo ./waf install
+python2 ./waf configure --with-asserts --with-tests --prefix=/usr mode=debug
+python2 ./waf
+sudo python2 ./waf install
 cd ..

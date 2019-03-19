@@ -29,6 +29,6 @@ set(NEON_MIR_SRC
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} pistache)
+target_link_libraries(${PROJ_NAME} pistache essentia)
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)
