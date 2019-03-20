@@ -6,6 +6,7 @@
 #include "session-header.hpp"
 #include <boost/uuid/uuid_io.hpp>
 #include <pistache/endpoint.h>
+#include "essentia.hpp"
 
 using namespace Pistache;
 
@@ -18,6 +19,8 @@ public:
 
   void StartServer();
   void Shutdown();
+
+  NeonEssentia neonEssentia;
 
 private:
   DebugLogger logger;

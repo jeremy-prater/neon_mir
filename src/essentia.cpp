@@ -5,6 +5,7 @@ NeonEssentia::NeonEssentia()
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS, "Created Essentia");
   essentia::init();
 }
+
 NeonEssentia::~NeonEssentia() {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS, "Destroyed Essentia");
 }

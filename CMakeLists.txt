@@ -24,11 +24,13 @@ set(NEON_MIR_SRC
   ${PROJECT_SOURCE_DIR}/src/audio-session.cpp
   ${PROJECT_SOURCE_DIR}/src/core-handler.cpp
   ${PROJECT_SOURCE_DIR}/src/neon-mir.cpp
+  ${PROJECT_SOURCE_DIR}/src/essentia.cpp
+  ${PROJECT_SOURCE_DIR}/src/essentia-session.cpp
 )
 
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} pistache essentia)
+target_link_libraries(${PROJ_NAME} pistache essentia avformat avcodec avutil yaml)
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)

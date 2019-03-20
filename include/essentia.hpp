@@ -1,8 +1,10 @@
 #pragma once
 
 #include "debuglogger.hpp"
-#include "essentia.h"
+#include "essentia/essentia.h"
+#include "essentia/pool.h"
 
+using namespace essentia;
 using namespace essentia::streaming;
 
 class NeonEssentia {
