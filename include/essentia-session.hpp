@@ -1,10 +1,19 @@
 #pragma once
 
 #include "debuglogger.hpp"
-#include "essentia.h"
+#include "essentia/essentia.h"
 
 using namespace essentia::streaming;
 
 class NeonEssentiaSession {
 public:
-  NeonEssentia();
+  NeonEssentiaSession(const std::string sessID);
+  ~NeonEssentiaSession();
+
+  [[nodiscard]] const std::string GetSessionID() const noexcept;
+
+private:
+  DebugLogger logger;
+  const std::string sessionID;
+};
+
