@@ -1,14 +1,13 @@
 #pragma once
 
-#include "audio-session.hpp"
 #include "core-handler.hpp"
-#include "debuglogger.hpp"
-#include "session-header.hpp"
-#include <boost/uuid/uuid_io.hpp>
-#include <pistache/endpoint.h>
-#include "essentia.hpp"
 
-using namespace Pistache;
+#include "audio-session.hpp"
+#include "debuglogger.hpp"
+#include "essentia.hpp"
+#include <boost/asio.hpp>
+#include <boost/asio/high_resolution_timer.hpp>
+#include <boost/uuid/uuid_io.hpp>
 
 class NeonMIR {
 public:
@@ -23,12 +22,11 @@ public:
   NeonEssentia neonEssentia;
 
 private:
+  boost::asio::io_service io_service;
   DebugLogger logger;
 
+  std::thread httpServerThread;
+  std::shared_ptr<CoreHandlerServer> localServer;
+
   static NeonMIR *instance;
-
-  std::shared_ptr<Http::Endpoint> server;
-
-  std::shared_ptr<CoreHandler> coreHandler;
-
 };

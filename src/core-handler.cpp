@@ -3,32 +3,44 @@
 #include "boost/uuid/string_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
 #include "neon-mir.hpp"
-#include "session-header.hpp"
 
 CoreHandler::CoreHandler()
-    : logger("CoreHandler", DebugLogger::DebugColor::COLOR_WHITE, true) {}
+    : logger("CoreHandler", DebugLogger::DebugColor::COLOR_MAGENTA, true) {}
+
 CoreHandler::~CoreHandler() {}
 
-void CoreHandler::onRequest(const Http::Request &request,
-                            Http::ResponseWriter response) {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                  "Processing Request [%s][%d]", request.resource().c_str(),
-                  request.method());
+void CoreHandler::operator()(CoreHandlerServer::request const &request,
+                             CoreHandlerServer::connection_ptr connection) {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "HTTP Request : %s %s",
+                  request.method.c_str(), request.destination.c_str());
 
-  switch (request.method()) {
-  case Http::Method::Post:
-    if (request.resource() == "/shutdown") {
+  bool failure = true;
+  std::string responseBody;
+  std::map<std::string, std::string> headers = {{"Content-Type", "text/json"}};
+
+  if (request.method == "POST") {
+    if (request.destination == "/shutdown") {
       NeonMIR::getInstance()->Shutdown();
       return;
-    } else if (request.resource() == "/newSession") {
+    } else if (request.destination == "/newSession") {
       std::shared_ptr<AudioSession> newSession;
       bool collision = false;
+
+      CoreHandlerServer::connection::read_callback_function callbackFunc =
+          [this](CoreHandlerServer::connection::input_range input,
+                 boost::system::error_code ec, std::size_t bytes_transferred,
+                 CoreHandlerServer::connection_ptr connection) {
+            logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                            "Data size [%d]", bytes_transferred);
+          };
+
+      connection->read(callbackFunc);
 
       {
         std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
         do {
-          newSession = std::make_shared<AudioSession>(request.body().c_str(),
-                                                      request.body().length());
+          newSession = std::make_shared<AudioSession>(request.body.c_str(),
+                                                      request.body.length());
           auto it = AudioSession::activeSessions.find(newSession->uuid);
           if (it != AudioSession::activeSessions.end()) {
             logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
@@ -40,32 +52,44 @@ void CoreHandler::onRequest(const Http::Request &request,
         AudioSession::activeSessions[newSession->uuid] = newSession;
       }
 
-      response.headers().add<NeonSessionHeader>(
-          boost::uuids::to_string(newSession->uuid));
-      response.send(Http::Code::Ok, "");
-    } else if (request.resource() == "/releaseSession") {
+      connection->set_status(CoreHandlerServer::connection::ok);
+      failure = false;
+      headers["SessionID"] = boost::uuids::to_string(newSession->uuid);
+
+    } else if (request.destination == "/releaseSession") {
       std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
-      auto headers = request.headers();
-      std::string uuidHeader;
-      auto neonSessionHdr = request.headers();
-      neonSessionHdr.get<NeonSessionHeader>()->parse(uuidHeader);
+      failure = false;
+      //   auto headers = request.headers;
+      //   std::string uuidHeader;
+      //   auto neonSessionHdr = request.headers;
+      //   neonSessionHdr.get<NeonSessionHeader>()->parse(uuidHeader);
 
-      boost::uuids::string_generator uuidGenerator;
-      boost::uuids::uuid targetUUID = uuidGenerator(uuidHeader);
-      auto it = AudioSession::activeSessions.find(targetUUID);
-      if (it != AudioSession::activeSessions.end()) {
-        AudioSession::activeSessions.erase(targetUUID);
-        response.send(Http::Code::Ok, "");
-      } else {
-        logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                        "Unable to find audio session [%s] to delete",
-                        uuidHeader.c_str());
-        response.send(Http::Code::Not_Found, "");
-      }
+      //   boost::uuids::string_generator uuidGenerator;
+      //   boost::uuids::uuid targetUUID = uuidGenerator(uuidHeader);
+      //   auto it = AudioSession::activeSessions.find(targetUUID);
+      //   if (it != AudioSession::activeSessions.end()) {
+      //     AudioSession::activeSessions.erase(targetUUID);
+      //     response.send(Http::Code::Ok, "");
+      //   } else {
+      //     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+      //                     "Unable to find audio session [%s] to delete",
+      //                     uuidHeader.c_str());
+      //     response.send(Http::Code::Not_Found, "");
+      //   }
     }
-    break;
-
-  default:
-    response.send(Http::Code::Not_Found, "Invalid Request");
   }
+
+  if (failure) {
+    connection->set_status(CoreHandlerServer::connection::bad_request);
+    responseBody = "Invalid Request";
+  }
+
+  headers["Content-Length"] = std::to_string(responseBody.length());
+  connection->set_headers(headers);
+  connection->write(responseBody);
+}
+
+void CoreHandler::log(const CoreHandlerServer::string_type &message) {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                  "CoreHandler Error : %s", message.c_str());
 }

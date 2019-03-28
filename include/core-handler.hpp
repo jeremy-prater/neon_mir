@@ -1,18 +1,21 @@
 #pragma once
 
+#include <boost/network/protocol/http/server.hpp>
+
 #include "debuglogger.hpp"
-#include <pistache/endpoint.h>
 
-using namespace Pistache;
+class CoreHandler;
 
-class CoreHandler : public Http::Handler {
-  HTTP_PROTOTYPE(CoreHandler)
+typedef boost::network::http::server<CoreHandler> CoreHandlerServer;
+
+class CoreHandler {
 public:
   CoreHandler();
   ~CoreHandler();
 
-  void onRequest(const Http::Request &request,
-                 Http::ResponseWriter response) override;
+  void operator()(CoreHandlerServer::request const &request,
+                  CoreHandlerServer::connection_ptr connection);
+  void log(const CoreHandlerServer::string_type &message);
 
 private:
   DebugLogger logger;
