@@ -5,12 +5,7 @@ NeonMIR *NeonMIR::instance = nullptr;
 NeonMIR::NeonMIR()
     : logger("NEON-MIR", DebugLogger::DebugColor::COLOR_WHITE, true) {}
 
-NeonMIR::~NeonMIR() {
-  if (httpServerThread.joinable()) {
-    localServer->stop();
-    httpServerThread.join();
-  }
-}
+NeonMIR::~NeonMIR() {}
 
 NeonMIR *NeonMIR::getInstance() {
   static std::mutex instanceMutex;
@@ -22,27 +17,6 @@ NeonMIR *NeonMIR::getInstance() {
 }
 
 void NeonMIR::StartServer() {
-  httpServerThread = std::thread([this] {
-    try {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                      "Starting HTTP Server!");
-      CoreHandler handler;
-      CoreHandlerServer::options options(handler);
-      localServer = std::make_shared<CoreHandlerServer>(
-          options
-              .thread_pool(std::make_shared<boost::network::utils::thread_pool>(
-                  std::thread::hardware_concurrency()))
-              .address("0.0.0.0")
-              .port("8351"));
-      localServer->run();
-    } catch (std::exception &e) {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                      "HTTP Server Error : %s", e.what());
-    }
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                    "Stopped HTTP Server!");
-  });
-
   boost::asio::high_resolution_timer timer{io_service};
 
   boost::asio::signal_set signals(io_service, SIGINT, SIGTERM);
