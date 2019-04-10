@@ -3,7 +3,6 @@
 #include "kj/io.h"
 #include "zmq.hpp"
 #include <exception>
-#include <iostream>
 
 class ZMQOutputStreamException : public std::exception {
   virtual const char *what() const throw() {
@@ -23,7 +22,6 @@ public:
 
   virtual void write(const void *buffer, size_t size) {
     dataSize += size;
-    std::cout << "Created ZMQ message : " << dataSize << "bytes" << std::endl;
     dataBlock = realloc(dataBlock, dataSize);
     void *start = static_cast<uint8_t *>(dataBlock) + dataSize - size;
     memcpy(start, buffer, size);

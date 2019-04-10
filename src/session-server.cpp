@@ -31,8 +31,8 @@ void SessionServer::server() {
     //  Wait for next request from client
     zmqSocket.recv(&request);
 
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                    "Received Request [%d] bytes", request.size());
+    // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+    //                 "Received Request [%d] bytes", request.size());
 
     capnp::UnalignedFlatArrayMessageReader reader(kj::arrayPtr(
         static_cast<const capnp::word *>(request.data()), request.size()));
@@ -42,9 +42,9 @@ void SessionServer::server() {
 
     switch (sessionEvent.getCommand()) {
     case neon::session::SessionEvent::Command::CREATE_SESSION: {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                      "Received Create Session Request for [%s]",
-                      sessionEvent.getName().cStr());
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+      //                 "Received Create Session Request for [%s]",
+      //                 sessionEvent.getName().cStr());
     } break;
     case neon::session::SessionEvent::Command::RELEASE_SESSION: {
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
@@ -78,8 +78,8 @@ void SessionServer::server() {
     //       headers["SessionID"] = boost::uuids::to_string(newSession->uuid);
 
     //  Send reply back to client
-    zmq::message_t reply(5);
-    memcpy(reply.data(), "World", 5);
+    zmq::message_t reply(sessionEvent.getName().begin(),
+                         sessionEvent.getName().end());
     zmqSocket.send(reply);
   }
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,

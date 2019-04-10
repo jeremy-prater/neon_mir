@@ -7,44 +7,75 @@
 #include "neon.session.capnp.h"
 #include <ZMQOutputStream.hpp>
 #include <iostream>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <zmq.hpp>
 
-void CreateSession() {
-  zmq::context_t context(1);
-  zmq::socket_t socket(context, ZMQ_REQ);
+#define THREAD_COUNT 50
+#define ITERATIONS 200
 
-  std::cout << "Connecting to Neon-MIR server..." << std::endl;
-  socket.connect("tcp://localhost:5555");
+std::mutex countMutex;
+uint32_t count;
 
-  capnp::MallocMessageBuilder message;
-
-  auto sessionEvent = message.initRoot<neon::session::SessionEvent>();
-
-  std::string handle = "Test-Client-1";
-  sessionEvent.setCommand(
-      neon::session::SessionEvent::Command::CREATE_SESSION);
-  sessionEvent.setName(handle);
-
-  ZMQOutputStream outStream;
-  capnp::writeMessage(outStream, message);
-  zmq::message_t request(outStream.data(), outStream.size(),
-                         &ZMQOutputStream::release,
-                         static_cast<void *>(&outStream));
-
-  std::cout << "Sending " << request.size() << " bytes" << std::endl;
-  std::cout << "Sending CREATE_SESSION [" << handle << "]" << std::endl;
-  socket.send(request);
-
-  //  Get the reply.
-  zmq::message_t reply;
-  socket.recv(&reply);
-  std::cout << "Received UUID ["
-            << "12345"
-            << "]" << std::endl;
-}
+class MismatchedReply : public std::exception {
+  virtual const char *what() const throw() { return "MismatchedReply!!"; }
+};
 
 int main() {
-  CreateSession();
+  count = 0;
+  std::thread threadPool[THREAD_COUNT];
+
+  for (int tIC = 0; tIC < ITERATIONS; tIC++) {
+    for (int tID = 0; tID < THREAD_COUNT; tID++) {
+      threadPool[tID] = std::thread([tID] {
+        zmq::context_t context(1);
+        zmq::socket_t socket(context, ZMQ_REQ);
+
+        socket.connect("tcp://localhost:5555");
+
+        capnp::MallocMessageBuilder message;
+
+        auto sessionEvent = message.initRoot<neon::session::SessionEvent>();
+
+        std::string handle = "Test-Client-" + std::to_string(tID);
+        sessionEvent.setCommand(
+            neon::session::SessionEvent::Command::CREATE_SESSION);
+        sessionEvent.setName(handle);
+
+        ZMQOutputStream outStream;
+        capnp::writeMessage(outStream, message);
+        zmq::message_t request(outStream.data(), outStream.size(),
+                               &ZMQOutputStream::release,
+                               static_cast<void *>(&outStream));
+        socket.send(request);
+
+        //  Get the reply.
+        zmq::message_t reply;
+        socket.recv(&reply);
+        char *buffer = static_cast<char *>(malloc(reply.size() + 1));
+        memcpy(buffer, reply.data(), reply.size());
+        buffer[reply.size()] = 0x00;
+        std::string replyData(buffer);
+        {
+          std::scoped_lock<std::mutex> lock(countMutex);
+          std::cout << ++count << " : ";
+          if (replyData == handle) {
+            std::cout << "Passed" << std::endl;
+          } else {
+            std::cout << "Failed! " << replyData << "!=" << handle
+                      << std::endl;
+            MismatchedReply e;
+            throw e;
+          }
+        }
+        free(buffer);
+      });
+    }
+
+    for (int tID = 0; tID < THREAD_COUNT; tID++) {
+      threadPool[tID].join();
+    }
+  }
   return 0;
 }
