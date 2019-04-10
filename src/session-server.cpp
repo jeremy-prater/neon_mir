@@ -34,10 +34,11 @@ void SessionServer::server() {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                     "Received Request [%d] bytes", request.size());
 
-    capnp::FlatArrayMessageReader reader(kj::arrayPtr(
+    capnp::UnalignedFlatArrayMessageReader reader(kj::arrayPtr(
         static_cast<const capnp::word *>(request.data()), request.size()));
 
-    SessionEvent::Reader sessionEvent = reader.getRoot<SessionEvent>();
+    neon::session::SessionEvent::Reader sessionEvent =
+        reader.getRoot<neon::session::SessionEvent>();
 
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                     "Received Session Request for [%s]",

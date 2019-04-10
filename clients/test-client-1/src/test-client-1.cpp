@@ -5,6 +5,7 @@
 //
 #include "capnp/serialize.h"
 #include "neon.session.capnp.h"
+#include <ZMQOutputStream.hpp>
 #include <iostream>
 #include <string>
 #include <zmq.hpp>
@@ -17,29 +18,32 @@ int main() {
   std::cout << "Connecting to hello world server..." << std::endl;
   socket.connect("tcp://localhost:5555");
 
-  //  Do 10 requests, waiting each time for a response
-  for (int request_nbr = 0; request_nbr != 10; request_nbr++) {
+  capnp::MallocMessageBuilder message;
 
-    capnp::MallocMessageBuilder message;
+  auto sessionEvent = message.initRoot<neon::session::SessionEvent>();
 
-    SessionEvent::Builder sessionEvent = message.initRoot<SessionEvent>();
+  std::string handle = "Test-Client-1";
+  sessionEvent.setCommand(
+      neon::session::SessionEvent::Command::RELEASE_SESSION);
+  sessionEvent.setName(handle);
+  sessionEvent.setUuid("12345");
 
-    sessionEvent.setCommand(SessionEvent::Command::CREATE_SESSION);
-    sessionEvent.setName("Test-Client-1");
+  ZMQOutputStream outStream;
+  capnp::writeMessage(outStream, message);
+  zmq::message_t request(outStream.data(), outStream.size(),
+                         &ZMQOutputStream::release, static_cast<void *>(&outStream));
 
-    auto output = message.getSegmentsForOutput();
+  std::cout << "Sending " << request.size() << " bytes" << std::endl;
+  std::cout << "Sending CREATE_SESSION [" << handle << "]" << std::endl;
 
-    std::cout << "Sending " << output.size() << " bytes" << std::endl;
+  socket.send(request);
 
-    zmq::message_t request(output.size());
-    memcpy(request.data(), output.begin(), output.size());
-    std::cout << "Sending Hello " << request_nbr << "..." << std::endl;
-    socket.send(request);
+  //  Get the reply.
+  zmq::message_t reply;
+  socket.recv(&reply);
+  std::cout << "Received UUID ["
+            << "12345"
+            << "]" << std::endl;
 
-    //  Get the reply.
-    zmq::message_t reply;
-    socket.recv(&reply);
-    std::cout << "Received World " << request_nbr << std::endl;
-  }
   return 0;
 }

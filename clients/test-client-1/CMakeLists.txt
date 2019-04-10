@@ -18,6 +18,7 @@ set(CMAKE_BUILD_TYPE Debug)
 # Add include folders
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}")
+include_directories("${PROJECT_SOURCE_DIR}/../core/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 # Source Files
@@ -32,6 +33,6 @@ execute_process(COMMAND capnp compile --src-prefix=../../../metadata -oc++ ${CMA
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} zmq capnp iio pthread rt ${Boost_LIBRARIES})
+target_link_libraries(${PROJ_NAME} zmq capnp iio pthread rt kj ${Boost_LIBRARIES})
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)
