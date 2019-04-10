@@ -40,9 +40,22 @@ void SessionServer::server() {
     neon::session::SessionEvent::Reader sessionEvent =
         reader.getRoot<neon::session::SessionEvent>();
 
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                    "Received Session Request for [%s]",
-                    sessionEvent.getName().cStr());
+    switch (sessionEvent.getCommand()) {
+    case neon::session::SessionEvent::Command::CREATE_SESSION: {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                      "Received Create Session Request for [%s]",
+                      sessionEvent.getName().cStr());
+    } break;
+    case neon::session::SessionEvent::Command::RELEASE_SESSION: {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                      "Received Release Session Request for [%s]",
+                      sessionEvent.getName().cStr());
+    } break;
+    case neon::session::SessionEvent::Command::SHUTDOWN: {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS, "Shutdown!");
+    } break;
+    }
+
     //       std::shared_ptr<AudioSession> newSession;
     //       bool collision = false;
     //       std::string payload;
