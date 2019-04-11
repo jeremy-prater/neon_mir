@@ -12,7 +12,8 @@ std::unordered_map<boost::uuids::uuid, std::shared_ptr<AudioSession>,
 AudioSession::AudioSession()
     : uuid(boost::uuids::random_generator()()),
       logger("AudioSession-" + boost::uuids::to_string(uuid),
-             DebugLogger::DebugColor::COLOR_BLUE, true) {
+             DebugLogger::DebugColor::COLOR_BLUE, true),
+      sampleRate(0), channels(0), width(0), duration(0) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "Creating Session from bytes of audio data!");
 
@@ -23,4 +24,34 @@ AudioSession::AudioSession()
 AudioSession::~AudioSession() {
   // free(audioData);
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Destoryed Session!");
+}
+
+void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
+                                uint8_t newWidth, double newDuration) {
+  if ((newWidth != 16) && (newWidth != 24) && (newWidth != 32)) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Invalid bit-depth [%d]", newWidth);
+    return;
+  }
+  if ((newSampleRate != 44100) && (newSampleRate != 48000)) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Invalid sample-rate [%d]", newSampleRate);
+    return;
+  }
+
+  sampleRate = newSampleRate;
+  channels = newChannels;
+  width = newWidth;
+  duration = newDuration / 1000;
+  logger.WriteLog(
+      DebugLogger::DebugLevel::DEBUG_STATUS,
+      "Updating Config : SR [%d] Width [%d] Channels [%d] Duration [%f]",
+      sampleRate, width, channels, duration);
+
+  size_t bytes = channels * (width / 8) * sampleRate * duration;
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                  "Allocating [%d] bytes", bytes);
+
+  audioData =
+      std::shared_ptr<uint8_t>(static_cast<uint8_t *>(malloc(bytes)), free);
 }

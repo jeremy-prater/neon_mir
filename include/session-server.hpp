@@ -14,14 +14,14 @@ public:
   public:
     Handler(SessionServer *server);
     virtual ~Handler();
-    
+
     virtual ::kj::Promise<void>
     createSession(CreateSessionContext context) override;
-
     virtual ::kj::Promise<void>
     releaseSession(ReleaseSessionContext context) override;
-
     virtual ::kj::Promise<void> shutdown(ShutdownContext context) override;
+    virtual ::kj::Promise<void>
+    updateSessionConfig(UpdateSessionConfigContext context) override;
 
   private:
     SessionServer *instance;

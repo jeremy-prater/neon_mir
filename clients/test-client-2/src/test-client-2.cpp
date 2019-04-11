@@ -19,10 +19,26 @@ int main() {
       client.getMain<neon::session::Controller>();
   auto &waitScope = client.getWaitScope();
   std::string handle = "Test-Client-2 : Audio Stream Test";
-  auto request = controllerServer.createSessionRequest();
-  request.setName(handle);
-  auto promise = request.send();
-  auto response = promise.wait(waitScope);
+  std::string sessionUUID;
 
-  std::string replyData = response.getUuid();
+  {
+    auto request = controllerServer.createSessionRequest();
+    request.setName(handle);
+    auto promise = request.send();
+    auto response = promise.wait(waitScope);
+    sessionUUID = response.getUuid();
+  }
+
+  {
+    auto request = controllerServer.updateSessionConfigRequest();
+    auto config = controllerServer.updateSessionConfigRequest().initConfig();
+    config.setUuid(sessionUUID);
+    config.setSampleRate(44100);
+    config.setChannels(2);
+    config.setWidth(16);
+    config.setDuration(10 * 1000);
+    request.setConfig(config);
+    auto promise = request.send();
+    auto response = promise.wait(waitScope);
+  }
 }

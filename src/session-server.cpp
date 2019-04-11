@@ -27,8 +27,7 @@ void SessionServer::server() {
   zmqSocket.bind("tcp://*:5555");
 
   // Run forever, accepting connections and handling requests.
-  capnp::EzRpcServer server(kj::heap<SessionServer::Handler>(this), "*",
-                            5554);
+  capnp::EzRpcServer server(kj::heap<SessionServer::Handler>(this), "*", 5554);
   auto &waitScope = server.getWaitScope();
   kj::NEVER_DONE.wait(waitScope);
 
@@ -111,19 +110,42 @@ SessionServer::Handler::releaseSession(ReleaseSessionContext context) {
   instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                             "Received Destroy Session Request for [%s]",
                             context.getParams().getUuid().cStr());
+
+  // TODO : implement
   return kj::READY_NOW;
 }
 
 kj::Promise<void> SessionServer::Handler::shutdown(ShutdownContext context) {
   instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                             "Session Server shutdown!!");
-  return kj::READY_NOW;
-
   instance->running = false;
+  return kj::READY_NOW;
+}
+
+kj::Promise<void> SessionServer::Handler::updateSessionConfig(
+    UpdateSessionConfigContext context) {
+  auto config = context.getParams().getConfig();
+
+  std::string uuid = config.getUuid();
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(uuid));
+    if (it == AudioSession::activeSessions.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                                "Unknown UUID [%s]", uuid.c_str());
+    } else {
+      it->second->updateConfig(config.getSampleRate(), config.getChannels(),
+                               config.getWidth(), config.getDuration());
+    }
+  }
+  return kj::READY_NOW;
 }
 
 // void SessionServer::operator()(SessionServerServer::request const &request,
-//                              SessionServerServer::connection_ptr connection)
+//                              SessionServerServer::connection_ptr
+//                              connection)
 //                              {
 //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "HTTP Request : %s
 //   %s",
@@ -154,8 +176,8 @@ kj::Promise<void> SessionServer::Handler::shutdown(ShutdownContext context) {
 //       usleep(500 * 1000);
 
 //       {
-//         std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
-//         do {
+//         std::scoped_lock<std::mutex>
+//         lock(AudioSession::activeSessionMutex); do {
 //           newSession =
 //               std::make_shared<AudioSession>(payload.c_str(),
 //               payload.length());

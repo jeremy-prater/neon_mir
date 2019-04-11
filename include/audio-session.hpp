@@ -18,7 +18,15 @@ public:
                             boost::hash<boost::uuids::uuid>>
       activeSessions;
 
+  void updateConfig(uint32_t newSampleRate, uint8_t newChannels,
+                    uint8_t newWidth, double newDuration);
+
 private:
-  uint8_t *audioData;
+  std::shared_ptr<uint8_t> audioData;
   DebugLogger logger;
+
+  uint32_t sampleRate;
+  uint8_t channels;
+  uint8_t width;
+  double duration;
 };
