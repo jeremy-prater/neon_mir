@@ -8,7 +8,7 @@
 
 class AudioSession {
 public:
-  AudioSession(const char *data, const size_t size);
+  AudioSession();
   ~AudioSession();
 
   const boost::uuids::uuid uuid;

@@ -37,6 +37,6 @@ execute_process(COMMAND capnp compile --src-prefix=../metadata -oc++ ${CMAKE_SOU
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} essentia avformat avcodec avutil capnp zmq kj yaml iio pthread rt ${Boost_LIBRARIES})
+target_link_libraries(${PROJ_NAME} essentia avformat avcodec avutil capnp capnp-rpc zmq kj kj-async yaml iio pthread rt ${Boost_LIBRARIES})
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)

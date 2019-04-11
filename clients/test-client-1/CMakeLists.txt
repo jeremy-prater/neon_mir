@@ -33,6 +33,6 @@ execute_process(COMMAND capnp compile --src-prefix=../../../metadata -oc++ ${CMA
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} zmq capnp iio pthread rt kj ${Boost_LIBRARIES})
+target_link_libraries(${PROJ_NAME} zmq capnp capnp-rpc iio pthread rt kj kj-async ${Boost_LIBRARIES})
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)

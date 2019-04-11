@@ -4,14 +4,8 @@ using Cxx = import "/capnp/c++.capnp";
 
 $Cxx.namespace("neon::session");
 
-struct SessionEvent {
-    enum Command {
-      createSession   @0;
-      releaseSession  @1;
-      shutdown        @2;
-    }
-
-    command   @0 :Command;
-    name      @1 :Text;
-    uuid      @2 :Text;
+interface Controller {
+    createSession  @0 (name :Text) -> (uuid :Text);
+    releaseSession @1 (uuid :Text);
+    shutdown       @2 ();
 }

@@ -2,12 +2,13 @@
 #include "audio-session.hpp"
 #include "boost/uuid/string_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
+#include "capnp/ez-rpc.h"
 #include "capnp/serialize.h"
 #include "neon-mir.hpp"
 #include "neon.session.capnp.h"
 
 SessionServer::SessionServer()
-    : shutdown(false),
+    : running(true),
       logger("SessionServer", DebugLogger::DebugColor::COLOR_MAGENTA, true),
       zmqContext(std::thread::hardware_concurrency()),
       zmqSocket(zmqContext, ZMQ_REP) {
@@ -15,7 +16,7 @@ SessionServer::SessionServer()
 }
 
 SessionServer::~SessionServer() {
-  shutdown = true;
+  running = false;
   if (sessionThread.joinable())
     sessionThread.join();
 }
@@ -25,7 +26,13 @@ void SessionServer::server() {
                   "Starting SessionServer");
   zmqSocket.bind("tcp://*:5555");
 
-  while (!shutdown) {
+  // Run forever, accepting connections and handling requests.
+  capnp::EzRpcServer server(kj::heap<SessionServer::Handler>(this), "*",
+                            5554);
+  auto &waitScope = server.getWaitScope();
+  kj::NEVER_DONE.wait(waitScope);
+
+  while (running) {
     zmq::message_t request;
 
     //  Wait for next request from client
@@ -34,56 +41,85 @@ void SessionServer::server() {
     // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
     //                 "Received Request [%d] bytes", request.size());
 
-    capnp::UnalignedFlatArrayMessageReader reader(kj::arrayPtr(
-        static_cast<const capnp::word *>(request.data()), request.size()));
+    // capnp::UnalignedFlatArrayMessageReader reader(kj::arrayPtr(
+    //     static_cast<const capnp::word *>(request.data()), request.size()));
 
-    neon::session::SessionEvent::Reader sessionEvent =
-        reader.getRoot<neon::session::SessionEvent>();
+    // neon::session::SessionEvent::Reader sessionEvent =
+    //     reader.getRoot<neon::session::SessionEvent>();
 
-    switch (sessionEvent.getCommand()) {
-    case neon::session::SessionEvent::Command::CREATE_SESSION: {
-      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-      //                 "Received Create Session Request for [%s]",
-      //                 sessionEvent.getName().cStr());
-    } break;
-    case neon::session::SessionEvent::Command::RELEASE_SESSION: {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                      "Received Release Session Request for [%s]",
-                      sessionEvent.getName().cStr());
-    } break;
-    case neon::session::SessionEvent::Command::SHUTDOWN: {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS, "Shutdown!");
-    } break;
-    }
+    // switch (sessionEvent.getCommand()) {
+    // case neon::session::SessionEvent::Command::CREATE_SESSION: {
+    // } break;
+    // case neon::session::SessionEvent::Command::RELEASE_SESSION: {
+    //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+    //                   "Received Release Session Request for [%s]",
+    //                   sessionEvent.getName().cStr());
+    //   zmq::message_t reply;
+    //   zmqSocket.send(reply);
 
-    //       std::shared_ptr<AudioSession> newSession;
-    //       bool collision = false;
-    //       std::string payload;
-    //       {
-    //         std::scoped_lock<std::mutex>
-    //         lock(AudioSession::activeSessionMutex); do {
-    //           newSession =
-    //               std::make_shared<AudioSession>(payload.c_str(),
-    //               payload.length());
-    //           auto it = AudioSession::activeSessions.find(newSession->uuid);
-    //           if (it != AudioSession::activeSessions.end()) {
-    //             logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-    //                             "activeSession UUID collision [%s]",
-    //                             boost::uuids::to_string(newSession->uuid).c_str());
-    //             collision = true;
-    //           }
-    //         } while (collision);
-    //         AudioSession::activeSessions[newSession->uuid] = newSession;
-    //       }
-    //       headers["SessionID"] = boost::uuids::to_string(newSession->uuid);
-
-    //  Send reply back to client
-    zmq::message_t reply(sessionEvent.getName().begin(),
-                         sessionEvent.getName().end());
-    zmqSocket.send(reply);
+    // } break;
+    // case neon::session::SessionEvent::Command::SHUTDOWN: {
+    //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS, "Shutdown!");
+    //   zmq::message_t reply;
+    //   zmqSocket.send(reply);
+    // } break;
+    // }
   }
+
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                   "Stopped SessionServer");
+}
+
+SessionServer::Handler::Handler(SessionServer *server) : instance(server) {}
+SessionServer::Handler::~Handler() {}
+
+kj::Promise<void>
+SessionServer::Handler::createSession(CreateSessionContext context) {
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                            "Received Create Session Request for [%s]",
+                            context.getParams().getName().cStr());
+
+  std::shared_ptr<AudioSession> newSession;
+  bool collision = false;
+
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+    do {
+      newSession = std::make_shared<AudioSession>();
+      auto it = AudioSession::activeSessions.find(newSession->uuid);
+      if (it != AudioSession::activeSessions.end()) {
+        instance->logger.WriteLog(
+            DebugLogger::DebugLevel::DEBUG_WARNING,
+            "activeSession UUID collision [%s]",
+            boost::uuids::to_string(newSession->uuid).c_str());
+        collision = true;
+      }
+    } while (collision);
+    AudioSession::activeSessions[newSession->uuid] = newSession;
+  }
+  std::string uuidString = boost::uuids::to_string(newSession->uuid);
+
+  // For testing!!
+  // context.getResults().setUuid(context.getParams().getName());
+  context.getResults().setUuid(uuidString);
+
+  return kj::READY_NOW;
+}
+
+kj::Promise<void>
+SessionServer::Handler::releaseSession(ReleaseSessionContext context) {
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                            "Received Destroy Session Request for [%s]",
+                            context.getParams().getUuid().cStr());
+  return kj::READY_NOW;
+}
+
+kj::Promise<void> SessionServer::Handler::shutdown(ShutdownContext context) {
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                            "Session Server shutdown!!");
+  return kj::READY_NOW;
+
+  instance->running = false;
 }
 
 // void SessionServer::operator()(SessionServerServer::request const &request,

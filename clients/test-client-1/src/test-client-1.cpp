@@ -3,6 +3,7 @@
 //  Connects REQ socket to tcp://localhost:5555
 //  Sends "Hello" to server, expects "World" back
 //
+#include "capnp/ez-rpc.h"
 #include "capnp/serialize.h"
 #include "neon.session.capnp.h"
 #include <ZMQOutputStream.hpp>
@@ -29,47 +30,29 @@ int main() {
   for (int tIC = 0; tIC < ITERATIONS; tIC++) {
     for (int tID = 0; tID < THREAD_COUNT; tID++) {
       threadPool[tID] = std::thread([tID] {
-        zmq::context_t context(1);
-        zmq::socket_t socket(context, ZMQ_REQ);
-
-        socket.connect("tcp://localhost:5555");
-
-        capnp::MallocMessageBuilder message;
-
-        auto sessionEvent = message.initRoot<neon::session::SessionEvent>();
-
-        std::string handle = "Test-Client-" + std::to_string(tID);
-        sessionEvent.setCommand(
-            neon::session::SessionEvent::Command::CREATE_SESSION);
-        sessionEvent.setName(handle);
-
-        ZMQOutputStream outStream;
-        capnp::writeMessage(outStream, message);
-        zmq::message_t request(outStream.data(), outStream.size(),
-                               &ZMQOutputStream::release,
-                               static_cast<void *>(&outStream));
-        socket.send(request);
-
-        //  Get the reply.
-        zmq::message_t reply;
-        socket.recv(&reply);
-        char *buffer = static_cast<char *>(malloc(reply.size() + 1));
-        memcpy(buffer, reply.data(), reply.size());
-        buffer[reply.size()] = 0x00;
-        std::string replyData(buffer);
         {
+          capnp::EzRpcClient client("localhost:5554");
+          neon::session::Controller::Client controllerServer =
+              client.getMain<neon::session::Controller>();
+          auto &waitScope = client.getWaitScope();
+          std::string handle = "Test-Client-" + std::to_string(tID);
+          auto request = controllerServer.createSessionRequest();
+          request.setName(handle);
+          auto promise = request.send();
+          auto response = promise.wait(waitScope);
+
+          std::string replyData = response.getUuid();
+
           std::scoped_lock<std::mutex> lock(countMutex);
           std::cout << ++count << " : ";
           if (replyData == handle) {
             std::cout << "Passed" << std::endl;
           } else {
-            std::cout << "Failed! " << replyData << "!=" << handle
-                      << std::endl;
+            std::cout << "Failed! " << replyData << "!=" << handle << std::endl;
             MismatchedReply e;
             throw e;
           }
         }
-        free(buffer);
       });
     }
 
