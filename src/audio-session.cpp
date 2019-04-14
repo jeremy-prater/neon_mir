@@ -52,6 +52,9 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                   "Allocating [%d] bytes", bytes);
 
-  audioData =
-      std::shared_ptr<uint8_t>(static_cast<uint8_t *>(malloc(bytes)), free);
+  audioData = boost::circular_buffer<uint8_t>(bytes);
+}
+
+boost::circular_buffer<uint8_t> &AudioSession::getAudioSink() {
+  return audioData;
 }

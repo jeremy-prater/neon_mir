@@ -1,12 +1,8 @@
-//
-//  Hello World client in C++
-//  Connects REQ socket to tcp://localhost:5555
-//  Sends "Hello" to server, expects "World" back
-//
 #include "capnp/ez-rpc.h"
 #include "capnp/serialize.h"
 #include "neon.session.capnp.h"
 #include <ZMQOutputStream.hpp>
+#include <fstream>
 #include <iostream>
 #include <mutex>
 #include <string>
@@ -21,6 +17,7 @@ int main() {
   std::string handle = "Test-Client-2 : Audio Stream Test";
   std::string sessionUUID;
 
+  // Create Session
   {
     auto request = controllerServer.createSessionRequest();
     request.setName(handle);
@@ -29,6 +26,7 @@ int main() {
     sessionUUID = response.getUuid();
   }
 
+  // Set Session config
   {
     auto request = controllerServer.updateSessionConfigRequest();
     auto config = controllerServer.updateSessionConfigRequest().initConfig();
@@ -40,5 +38,32 @@ int main() {
     request.setConfig(config);
     auto promise = request.send();
     auto response = promise.wait(waitScope);
+  }
+
+  char *musicData;
+  uint32_t musicDataLength;
+
+  // Load music sample...
+  {
+    std::ifstream audioSource(
+        "/home/prater/src/neon_mir/samples/midnight-drive-clip-10s.wav",
+        std::ios::in | std::ios::binary);
+    audioSource.seekg(0, std::ios::end);
+    musicDataLength = audioSource.tellg();
+    audioSource.seekg(0, std::ios::beg);
+    musicData = static_cast<char *>(malloc(musicDataLength));
+    audioSource.read(musicData, musicDataLength);
+    audioSource.close();
+  }
+
+  // Write music sample...
+  {
+    auto request = controllerServer.pushAudioDataRequest();
+    // Copy/Move data from musicData into the server.
+    // ::kj::arrayPtr<const char *> arrayPtr(static_cast<const char *>(musicData),
+    //                                       static_cast<size_t>(musicDataLength));
+    // neon::session::SessionAudioPacket::Reader value;
+    // request.setData(value);
+    // request.send();
   }
 }

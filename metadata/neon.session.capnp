@@ -12,9 +12,15 @@ struct SessionConfig {
     duration    @4 :Float64;
 }
 
+struct SessionAudioPacket {
+    uuid @0 :Text;
+    data @1 :Data;
+}
+
 interface Controller {
     createSession        @0 (name :Text) -> (uuid :Text);
     releaseSession       @1 (uuid :Text);
     shutdown             @2 ();
     updateSessionConfig  @3 (config :SessionConfig);
+    pushAudioData        @4 (data :SessionAudioPacket);
 }

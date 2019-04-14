@@ -143,6 +143,30 @@ kj::Promise<void> SessionServer::Handler::updateSessionConfig(
   return kj::READY_NOW;
 }
 
+kj::Promise<void>
+SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
+  auto input = context.getParams().getData();
+  std::string uuid = input.getUuid();
+  auto newAudio = input.getData();
+
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(uuid));
+    if (it == AudioSession::activeSessions.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+                                "Unknown UUID [%s]", uuid.c_str());
+    } else {
+      std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
+      // Transform data...??
+      auto output = it->second->getAudioSink();
+      std::copy(newAudio.begin(), newAudio.end(), output.begin());
+    }
+  }
+
+  return kj::READY_NOW;
+}
 // void SessionServer::operator()(SessionServerServer::request const &request,
 //                              SessionServerServer::connection_ptr
 //                              connection)
