@@ -33,7 +33,7 @@ public:
 
   // push raw audio data into the pipeline
   std::mutex audioSinkMutex;
-  boost::circular_buffer<uint8_t> &getAudioSink();
+  boost::circular_buffer<uint8_t> *getAudioSink();
 
 private:
   boost::circular_buffer<uint8_t> audioData;

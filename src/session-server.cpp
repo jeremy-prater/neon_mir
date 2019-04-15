@@ -147,7 +147,11 @@ kj::Promise<void>
 SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
   auto input = context.getParams().getData();
   std::string uuid = input.getUuid();
-  auto newAudio = input.getData();
+  auto newAudio = input.getSegment();
+
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+  //                           "pushAudioData to [%s] [%d] bytes", uuid.c_str(),
+  //                           newAudio.size());
 
   {
     std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
@@ -155,13 +159,20 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
     auto it = AudioSession::activeSessions.find(
         boost::uuids::string_generator()(uuid));
     if (it == AudioSession::activeSessions.end()) {
-      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                                 "Unknown UUID [%s]", uuid.c_str());
     } else {
       std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
       // Transform data...??
       auto output = it->second->getAudioSink();
-      std::copy(newAudio.begin(), newAudio.end(), output.begin());
+
+      // Optimize this later!!
+      for (auto audioByte : newAudio)
+        output->push_back(audioByte);
+
+      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
+      //                           "pushAudioData - circular buffer size[%s]
+      //                           [%d]", uuid.c_str(), output->size());
     }
   }
 

@@ -55,6 +55,6 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   audioData = boost::circular_buffer<uint8_t>(bytes);
 }
 
-boost::circular_buffer<uint8_t> &AudioSession::getAudioSink() {
-  return audioData;
+boost::circular_buffer<uint8_t> *AudioSession::getAudioSink() {
+  return &audioData;
 }

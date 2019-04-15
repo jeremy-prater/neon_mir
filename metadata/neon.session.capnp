@@ -14,7 +14,7 @@ struct SessionConfig {
 
 struct SessionAudioPacket {
     uuid @0 :Text;
-    data @1 :Data;
+    segment @1 :Data;
 }
 
 interface Controller {
