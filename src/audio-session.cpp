@@ -11,6 +11,7 @@ std::unordered_map<boost::uuids::uuid, std::shared_ptr<AudioSession>,
 
 AudioSession::AudioSession()
     : uuid(boost::uuids::random_generator()()),
+      essentiaSession(boost::uuids::to_string(uuid)),
       logger("AudioSession-" + boost::uuids::to_string(uuid),
              DebugLogger::DebugColor::COLOR_BLUE, true),
       sampleRate(0), channels(0), width(0), duration(0) {
@@ -53,6 +54,9 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
                   "Allocating [%d] bytes", bytes);
 
   audioData = boost::circular_buffer<uint8_t>(bytes);
+
+  // TODO: Extract this into something else later for dynamic pipelines
+  essentiaSession.defaultConfig(sampleRate, channels, width, duration);
 }
 
 boost::circular_buffer<uint8_t> *AudioSession::getAudioSink() {

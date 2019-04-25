@@ -2,6 +2,7 @@
 
 #include "debuglogger.hpp"
 #include "neon.session.capnp.h"
+#include "essentia-session.hpp"
 #include <boost/circular_buffer.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/uuid/uuid.hpp>
@@ -25,6 +26,7 @@ public:
                     uint8_t newWidth, double newDuration);
 
   // Create audio processing pipelines
+
   // This might be dynamic...
 
   // Start the pipeline
@@ -34,6 +36,8 @@ public:
   // push raw audio data into the pipeline
   std::mutex audioSinkMutex;
   boost::circular_buffer<uint8_t> *getAudioSink();
+
+  NeonEssentiaSession essentiaSession;
 
 private:
   boost::circular_buffer<uint8_t> audioData;

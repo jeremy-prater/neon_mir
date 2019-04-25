@@ -3,7 +3,8 @@
 NeonMIR *NeonMIR::instance = nullptr;
 
 NeonMIR::NeonMIR()
-    : logger("NEON-MIR", DebugLogger::DebugColor::COLOR_WHITE, true) {}
+    : logger("NEON-MIR", DebugLogger::DebugColor::COLOR_WHITE, true) {
+}
 
 NeonMIR::~NeonMIR() {}
 
