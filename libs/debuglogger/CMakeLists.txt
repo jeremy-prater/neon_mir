@@ -5,6 +5,7 @@ set (PROJ_NAME debuglogger)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # project (${PROJ_NAME} VERSION 1.0 DESCRIPTION "Get RAW PCM data from a Pulse Audio Source")
 project (${PROJ_NAME} VERSION 1.0 DESCRIPTION "Best C++ debug logger ever")
@@ -40,7 +41,6 @@ set_target_properties(${PROJ_NAME} PROPERTIES PUBLIC_HEADER
 
 set(INCLUDE_INSTALL_DIR include/ )
 set(LIB_INSTALL_DIR lib/ )
-set(INSTALL_DESTINATION /usr )
 
 include(CMakePackageConfigHelpers)
 
@@ -63,7 +63,7 @@ install(
 )
 
 install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}Config.cmake
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}Config.cmake
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}ConfigVersion.cmake
   DESTINATION ${LIB_INSTALL_DIR}/${PROJ_NAME}/cmake
 )

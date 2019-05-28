@@ -22,13 +22,12 @@ set(CMAKE_BUILD_TYPE Debug)
 include_directories("${PROJECT_SOURCE_DIR}/include")
 include_directories("${PROJECT_SOURCE_DIR}")
 message("${debuglogger_INCLUDE_DIRS}")
-include_directories("${debuglogger_INCLUDE_DIRS}")
+include_directories("${debuglogger_INCLUDE_DIR}")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 # Source Files
 set(NEON_MIR_SRC
   ${PROJECT_SOURCE_DIR}/src/session-server.cpp
-  ${PROJECT_SOURCE_DIR}/src/debuglogger.cpp
   ${PROJECT_SOURCE_DIR}/src/audio-session.cpp
   ${PROJECT_SOURCE_DIR}/src/neon-mir.cpp
   ${PROJECT_SOURCE_DIR}/src/essentia.cpp
@@ -42,6 +41,22 @@ execute_process(COMMAND capnp compile --src-prefix=../../metadata -oc++ ${CMAKE_
 # Define the output executable
 add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} essentia avformat avcodec avutil capnp capnp-rpc zmq kj kj-async yaml iio pthread rt ${Boost_LIBRARIES})
+target_link_libraries(${PROJ_NAME}
+  essentia
+  avformat
+  avcodec
+  avutil
+  capnp
+  capnp-rpc
+  zmq
+  kj
+  kj-async
+  yaml
+  iio
+  pthread
+  rt
+  ${Boost_LIBRARIES}
+  ${debuglogger_LIBRARIES}
+)
 
 install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)
