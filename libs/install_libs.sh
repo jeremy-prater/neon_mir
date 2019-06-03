@@ -2,7 +2,7 @@
 
 CMAKE_EXTRA="-DCMAKE_INSTALL_PREFIX:PATH=/usr"
 
-LIBS="debuglogger"
+LIBS="debuglogger pulse-audio-input"
 
 for lib in ${LIBS}
 do
@@ -10,7 +10,7 @@ do
     pushd ${lib}
         
         # TODO : Once stable, stop trashing builds
-        rm -rf build
+        #rm -rf build
 
         mkdir -p build
         cd build

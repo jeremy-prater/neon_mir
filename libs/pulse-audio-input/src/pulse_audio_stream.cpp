@@ -4,16 +4,15 @@
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// NeonPulseInput static members
+//  NeonPulseInput Static items...
 //
 
-pa_threaded_mainloop *NeonPulseInput::pulseAudioThread = nullptr;
-pa_mainloop_api *NeonPulseInput::pulseAudioApi = nullptr;
-pa_context *NeonPulseInput::pulseAudioContext = nullptr;
+pa_threaded_mainloop * NeonPulseInput::pulseAudioThread = nullptr;
+pa_mainloop_api * NeonPulseInput::pulseAudioApi = nullptr;
+pa_context * NeonPulseInput::pulseAudioContext = nullptr;
 pa_context_state_t NeonPulseInput::currentState = {};
 uint32_t NeonPulseInput::lockCounter = 0;
-pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
-    PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+pthread_mutex_t NeonPulseInput::pulseAudioContextMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 QList<uint32_t> NeonPulseInput::moduleTrashList;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,9 +29,10 @@ void NeonPulseInput::ModuleLoadCallback(pa_context *c, uint32_t idx,
   (void)c;
 
   NeonPulseInput *context = (NeonPulseInput *)userdata;
-  context->logger.WriteLog("Loaded : module-pipe-source [%08x]", idx);
+  context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                           "Loaded : module-pipe-source [%08x]", idx);
   if (idx != 0xFFFFFFFF) {
-    // context->fifoModule = idx;
+    context->fifoModule = idx;
   }
 }
 
@@ -42,24 +42,35 @@ void NeonPulseInput::ModuleUnloadCallback(pa_context *c, int success,
 
   NeonPulseInput *context = (NeonPulseInput *)userdata;
   if (success) {
-    // qDebug() << QString("Unloaded : module-pipe-source [%1]")
-    //                 .arg(context->fifoModule);
+    NeonPulseInput *context = (NeonPulseInput *)userdata;
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                             "Unloaded : module-pipe-source [%08x]",
+                             context->fifoModule);
   } else {
-    // qDebug() << QString("Error unloading : module-pipe-source [%1]")
-    //                 .arg(context->fifoModule);
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                             "Error unloading : module-pipe-source [%08x]",
+                             context->fifoModule);
   }
   context->fifoModule = 0;
-  context->DestroyStream();
+
+  // TODO : Nofity client that remote end died
+  // context->DestroyStream();
 }
 
 void NeonPulseInput::ModuleLoopbackLoadCallback(pa_context *c, uint32_t idx,
                                                 void *userdata) {
   (void)c;
-
-  // qDebug() << QString("Loaded : module-loopback [%1]").arg(idx);
   NeonPulseInput *context = (NeonPulseInput *)userdata;
   if (idx != 0xFFFFFFFF) {
     context->loopbackModule = idx;
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                             "Loaded : module-loopback [%08x]",
+                             context->loopbackModule);
+  } else {
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                             "Failed to load : module-loopback [%d]",
+                             context->loopbackModule);
+    context->loopbackModule = 0;
   }
 }
 
@@ -69,11 +80,13 @@ void NeonPulseInput::ModuleLoopbackUnloadCallback(pa_context *c, int success,
 
   NeonPulseInput *context = (NeonPulseInput *)userdata;
   if (success) {
-    // qDebug() << QString("Unloaded : module-loopback [%1]")
-    //                 .arg(context->loopbackModule);
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                             "Unloaded : module-loopback [%08x]",
+                             context->loopbackModule);
   } else {
-    // qDebug() << QString("Error unloading : module-loopback [%1]")
-    //                 .arg(context->loopbackModule);
+    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                             "Failed to unload : module-loopback [%d]",
+                             context->loopbackModule);
   }
   context->loopbackModule = 0;
 }

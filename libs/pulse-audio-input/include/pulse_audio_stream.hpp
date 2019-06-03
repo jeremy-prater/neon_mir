@@ -3,6 +3,7 @@
 #include <pulse/pulseaudio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "debuglogger.hpp"
 
 class NeonPulseInput
 {
@@ -36,4 +37,17 @@ private:
     static void moduleInfoCallback(pa_context *c, const pa_module_info *i, int eol, void *userdata);
     static void successCallback(pa_context* context, int success, void* raw);
     static void eventCallback(pa_context *c, pa_subscription_event_type_t t, uint32_t index, void *userdata);
+
+    DebugLogger logger;
+
+    static pa_threaded_mainloop * pulseAudioThread;
+    static pa_mainloop_api * pulseAudioApi;
+    static pa_context * pulseAudioContext;
+    static pa_context_state_t currentState;
+    static uint32_t lockCounter;
+    static pthread_mutex_t pulseAudioContextMutex;
+
+protected:
+    uint32_t loopbackModule;
+    uint32_t fifoModule;
 };

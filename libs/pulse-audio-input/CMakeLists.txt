@@ -12,6 +12,7 @@ project (${PROJ_NAME})
 INCLUDE(FindPkgConfig)
 
 find_package(Boost COMPONENTS system filesystem REQUIRED)
+find_package(debuglogger REQUIRED)
 
 set(CMAKE_BUILD_TYPE Debug)
 
