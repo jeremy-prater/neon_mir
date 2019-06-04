@@ -4,6 +4,16 @@
 #include <pulse/pulseaudio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <unordered_map>
+
+typedef struct {
+  std::string name;
+  uint32_t rate;
+  uint8_t bits;
+  uint8_t channels;
+  bool bigEndian;
+  bool sign;
+} NeonAudioFormat;
 
 class NeonPulseInput {
 public:
@@ -15,8 +25,7 @@ public:
   bool Connect();
   void Disconnect();
 
-  void CreateStream(const std::string name, uint32_t rate, uint8_t bits,
-                    uint8_t channels, bool bigEndian, bool sign);
+  void CreateStream(const int sourceID);
   void DestroyStream();
 
   void StartStream();
@@ -42,6 +51,8 @@ private:
   static void stateChangeCallback(pa_context *c, void *userdata);
   static void moduleInfoCallback(pa_context *c, const pa_module_info *i,
                                  int eol, void *userdata);
+  static void sourceInfoCallback(pa_context *c, const pa_source_info *i,
+                                 int eol, void *userdata);
   static void successCallback(pa_context *context, int success, void *raw);
   static void eventCallback(pa_context *c, pa_subscription_event_type_t t,
                             uint32_t index, void *userdata);
@@ -56,6 +67,11 @@ private:
   std::string sourceName;
   pthread_t readerThread;
 
+  void addSource(const pa_source_info *info);
+  void CreateStream(const NeonAudioFormat format);
+
+  std::unordered_map<uint32_t, NeonAudioFormat> neonAudioSources;
+
   static NeonPulseInput *instance;
 
   static pa_threaded_mainloop *pulseAudioThread;
@@ -64,6 +80,8 @@ private:
   static pa_context_state_t currentState;
   static uint32_t lockCounter;
   static pthread_mutex_t pulseAudioContextMutex;
+  static const std::unordered_map<const pa_sample_format_t, const std::string>
+      audioFormatStrings;
 
 protected:
   uint32_t loopbackModule;

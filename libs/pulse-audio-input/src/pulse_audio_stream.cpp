@@ -1,9 +1,12 @@
 #include "pulse_audio_stream.hpp"
+#include <chrono>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -20,6 +23,7 @@ pa_context_state_t NeonPulseInput::currentState = {};
 uint32_t NeonPulseInput::lockCounter = 0;
 pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
     PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+NeonPulseInput *NeonPulseInput::instance = nullptr;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -29,7 +33,11 @@ pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
 NeonPulseInput::NeonPulseInput()
     : logger("PulseAudioInput-" + std::to_string(getpid()),
              DebugLogger::DebugColor::COLOR_CYAN, false),
-      streamReadRunning(false), frameSize(0), fifoFile(0) {}
+      streamReadRunning(false), frameSize(0), fifoFile(0) {
+  instance = this;
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Created Pulse Audio Input");
+}
 
 NeonPulseInput::~NeonPulseInput() { instance = nullptr; }
 
@@ -96,7 +104,7 @@ void NeonPulseInput::ModuleLoopbackUnloadCallback(pa_context *c, int success,
                               instance->loopbackModule);
   } else {
     instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                              "Failed to unload : module-loopback [%d]",
+                              "Error unloading : module-loopback [%d]",
                               instance->loopbackModule);
   }
   instance->loopbackModule = 0;
@@ -167,11 +175,16 @@ bool NeonPulseInput::PAConnect() {
   Unlock();
   WaitForOp(operation);
 
+  Lock();
+  operation = pa_context_get_source_info_list(
+      pulseAudioContext, &NeonPulseInput::sourceInfoCallback, NULL);
+  Unlock();
+  WaitForOp(operation);
+
   return true;
 }
 
 bool NeonPulseInput::Connect() {
-
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "Connecting to Pulse Audio Source");
 
@@ -186,6 +199,37 @@ bool NeonPulseInput::Connect() {
   // pthread_mutex_init(&streamMutex, NULL);
 
   return true;
+}
+
+void NeonPulseInput::Disconnect() {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Disconnecting from Pulse Audio Source");
+
+  // Last chance for clean up of modules...
+
+  if (loopbackModule != 0) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Unloading module-loopback [%08x]", loopbackModule);
+
+    Lock();
+    pa_operation *operation = pa_context_unload_module(
+        pulseAudioContext, fifoModule,
+        NeonPulseInput::ModuleLoopbackUnloadCallback, nullptr);
+    Unlock();
+    WaitForOp(operation);
+  }
+
+  if (fifoModule != 0) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Unloading module-pipe-source [%08x]", fifoModule);
+
+    Lock();
+    pa_operation *operation =
+        pa_context_unload_module(pulseAudioContext, fifoModule,
+                                 NeonPulseInput::ModuleUnloadCallback, nullptr);
+    Unlock();
+    WaitForOp(operation);
+  }
 }
 
 ///////////////////////////////////////////////////////////
@@ -251,11 +295,94 @@ void NeonPulseInput::WaitForOp(pa_operation *operation) {
   pa_operation_unref(operation);
 }
 
-void NeonPulseInput::CreateStream(const std::string name, uint32_t rate,
-                                  uint8_t bits, uint8_t channels,
-                                  bool bigEndian, bool sign) {
-  sourceName = name;
-  if (!sign) {
+void NeonPulseInput::addSource(const pa_source_info *info) {
+  instance->logger.WriteLog(
+      DebugLogger::DebugLevel::DEBUG_INFO,
+      "Source [%d %s: %s] [%d channels] [%d Hz] [%s]", info->index, info->name,
+      info->description, info->sample_spec.channels, info->sample_spec.rate,
+      audioFormatStrings.at(info->sample_spec.format).c_str());
+
+  NeonAudioFormat format;
+  format.name = std::string(info->name);
+  format.rate = info->sample_spec.rate;
+  format.channels = info->sample_spec.channels;
+  switch (info->sample_spec.format) {
+  case PA_SAMPLE_U8:
+    format.bits = 8;
+    format.bigEndian = false;
+    format.sign = false;
+    break;
+  case PA_SAMPLE_ALAW:
+    format.bits = 8;
+    format.bigEndian = false;
+    format.sign = false;
+    break;
+  case PA_SAMPLE_ULAW:
+    format.bits = 8;
+    format.bigEndian = false;
+    format.sign = false;
+    break;
+  case PA_SAMPLE_S16LE:
+    format.bits = 16;
+    format.bigEndian = false;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S16BE:
+    format.bits = 16;
+    format.bigEndian = true;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_FLOAT32LE:
+    format.bits = 32;
+    format.bigEndian = false;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_FLOAT32BE:
+    format.bits = 32;
+    format.bigEndian = true;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S32LE:
+    format.bits = 32;
+    format.bigEndian = false;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S32BE:
+    format.bits = 32;
+    format.bigEndian = true;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S24LE:
+    format.bits = 24;
+    format.bigEndian = false;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S24BE:
+    format.bits = 24;
+    format.bigEndian = true;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S24_32LE:
+    format.bits = 32;
+    format.bigEndian = false;
+    format.sign = true;
+    break;
+  case PA_SAMPLE_S24_32BE:
+    format.bits = 32;
+    format.bigEndian = true;
+    format.sign = true;
+    break;
+  }
+  neonAudioSources[info->index] = format;
+}
+
+void NeonPulseInput::CreateStream(const int sourceIndex) {
+  CreateStream(neonAudioSources.at(sourceIndex));
+}
+
+void NeonPulseInput::CreateStream(const NeonAudioFormat audioFormat) {
+  sourceName = audioFormat.name;
+  if (!audioFormat.sign) {
     instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                               "Unable to create unsigned stream!");
     return;
@@ -267,34 +394,34 @@ void NeonPulseInput::CreateStream(const std::string name, uint32_t rate,
   const char *format = nullptr;
   const char *channelmap = nullptr;
 
-  switch (bits) {
+  switch (audioFormat.bits) {
   case 16:
-    format = bigEndian ? "s16be" : "s16le";
+    format = audioFormat.bigEndian ? "s16be" : "s16le";
     break;
   case 24:
-    format = bigEndian ? "s24be" : "s24le";
+    format = audioFormat.bigEndian ? "s24be" : "s24le";
     break;
   case 32:
-    format = bigEndian ? "s32be" : "s32le";
+    format = audioFormat.bigEndian ? "s32be" : "s32le";
     break;
   default:
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                    "Unknown bit depth [%d]", bits);
+                    "Unknown bit depth [%d]", audioFormat.bits);
     break;
   }
 
-  if (channels == 1) {
+  if (audioFormat.channels == 1) {
     channelmap = "mono";
-  } else if (channels == 2) {
+  } else if (audioFormat.channels == 2) {
     channelmap = "left,right";
 
   } else {
     channelmap = "";
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                    "Unknown number of channels [%d]", channels);
+                    "Unknown number of channels [%d]", audioFormat.channels);
   }
 
-  frameSize = (bits / 8) * channels;
+  frameSize = (audioFormat.bits / 8) * audioFormat.channels;
 
   char argBuffer[1024];
   memset(argBuffer, 0, 1024);
@@ -304,7 +431,8 @@ void NeonPulseInput::CreateStream(const std::string name, uint32_t rate,
   snprintf(argBuffer, 1024,
            "source_name=%s format=%s rate=%d channels=%d channel_map=%s "
            "file=/tmp/%s.fifo",
-           nameBuffer, format, rate, channels, channelmap, nameBuffer);
+           nameBuffer, format, audioFormat.rate, audioFormat.channels,
+           channelmap, nameBuffer);
 
   // Load module-pipe-source
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -316,12 +444,12 @@ void NeonPulseInput::CreateStream(const std::string name, uint32_t rate,
 void NeonPulseInput::DestroyStream() {
   if (fifoModule != 0) {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                    "Unloading module-pipe-source [%d]", fifoModule);
+                    "Unloading module-pipe-source [%08x]", fifoModule);
 
     Lock();
     pa_operation *operation =
         pa_context_unload_module(pulseAudioContext, fifoModule,
-                                 NeonPulseInput::ModuleUnloadCallback, this);
+                                 NeonPulseInput::ModuleUnloadCallback, nullptr);
     Unlock();
     WaitForOp(operation);
   }
@@ -351,7 +479,7 @@ void NeonPulseInput::StartStream() {
   snprintf(argBuffer, 1024, "source=%s sink_input_properties=\"media.name=%s\"",
            nameBuffer, nameBuffer);
 
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "Loading module-loopback [%s]", argBuffer);
 
   pa_context_load_module(pulseAudioContext, "module-loopback", argBuffer,
@@ -401,116 +529,87 @@ void NeonPulseInput::StopStream() {
   streamReadRunning = false;
 
   if (loopbackModule != 0) {
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                    "Unloading module-loopback [%d]", loopbackModule);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Unloading module-loopback [%08x]", loopbackModule);
 
     Lock();
     pa_operation *operation = pa_context_unload_module(
         pulseAudioContext, loopbackModule,
-        NeonPulseInput::ModuleLoopbackUnloadCallback, this);
+        NeonPulseInput::ModuleLoopbackUnloadCallback, nullptr);
     Unlock();
     WaitForOp(operation);
   }
 }
 
-void NeonPulseInput::AddStreamChunk(uint8_t *data, uint32_t length) {
-  // Write data to FIFO
-  fifoLock.lock();
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Adding
-  // chunk : " << length;
-  fifoQueue.append((const char *)data, (int)length);
-  totalBytes += length;
-  fifoLock.unlock();
-  // streamChunkOutputTime += (length / frameSize);
-  // free(data);
-}
-
-uint32_t NeonPulseInput::GetSampleTime() { return streamChunkOutputTime; }
-
-uint32_t NeonPulseInput::GetTotalBytes() { return totalBytes; }
-
-void NeonPulseInput::ProcessStreamData() {
-  pthread_cond_signal(&chunkCondition);
-}
-
 void *NeonPulseInput::DataStreamReader(void *arg) {
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
-  // Start";
-
   NeonPulseInput *parent = (NeonPulseInput *)arg;
-  struct timespec timeDelay;
+  parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                          "DataStreamReader Start");
 
-  /*if (streamChunkBufferHead == streamChunkBufferTail)
-  {
-      pendingStreamData = true;
-      //instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Stream
-  Request Data : Queue empty!");
-  }
-  else
-  {*/
-  usleep(50 * 1000);
-
-  clock_gettime(CLOCK_MONOTONIC, &timeDelay);
   parent->streamReadRunning = true;
   uint32_t bytesWritten = 0;
-  while (parent->streamReadRunning) {
-    uint32_t bufferSize = 0;
-    uint32_t writtenSize = 0;
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
-    // : loop" << bufferSize;
-    if ((parent->fifoFile != nullptr) && parent->fifoFile->isOpen()) {
-      parent->fifoLock.lock();
-      bufferSize = parent->fifoQueue.size();
-      if (bufferSize > 0) {
-        // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Writing
-        // to queue : " << bufferSize;
-        writtenSize = parent->fifoFile->write(parent->fifoQueue);
-        parent->fifoQueue.clear();
+  bool eof = false;
+  struct timeval timeout;
+  timeout.tv_usec = 50 * 1E3; // 50 ms
+  timeout.tv_sec = 0;
+
+  fd_set fdSet;
+  FD_ZERO(&fdSet);
+  FD_SET(parent->fifoFile, &fdSet);
+
+  auto start = std::chrono::steady_clock::now();
+
+  while (parent->streamReadRunning && !eof) {
+    uint32_t readSize = 0;
+
+    // parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+    //                         "DataStreamReader : loop");
+    /* select returns 0 if timeout, 1 if input available, -1 if error. */
+    int result = select(FD_SETSIZE, &fdSet, NULL, NULL, &timeout);
+    if (result == 0) {
+      // Timeout occured...
+      continue;
+    } else if (result == 1) {
+      // Data is ready!
+      const int bufferSize = 16;
+      uint8_t buffer[bufferSize];
+      ssize_t readResult = read(parent->fifoFile, &buffer, bufferSize);
+      if (readResult > 0) {
+        readSize += readResult;
+      } else if (readResult == -1) {
+        parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "DataStreamReader : read failed [%s]",
+                                strerror(errno));
+        eof = true;
+        parent->streamReadRunning = false;
+        break;
+      } else {
+        parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "DataStreamReader : read 0...?");
       }
-      parent->fifoLock.unlock();
+    } else {
+      // Error occured :(
+      parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "DataStreamReader : select failed [%s]",
+                              strerror(errno));
+      eof = true;
+      parent->streamReadRunning = false;
+      break;
     }
 
-    if (writtenSize > 0) {
-      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-      // Reader : Wrote [%1 bytes]").arg(writtenSize);
-      parent->streamChunkOutputTime += (writtenSize / parent->frameSize);
-      bytesWritten += writtenSize;
-      if (writtenSize != bufferSize) {
-        instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString(
-                        "Failed to write to module-pipe-source FIFO [%1]!=[%2]")
-                        .arg(writtenSize)
-                        .arg(bufferSize);
-      }
-    }
+    auto now = std::chrono::steady_clock::now();
 
-    timeDelay.tv_nsec += 60 * 1E6; // 50 ms
-    if (timeDelay.tv_nsec >= 1E9) {
-      timeDelay.tv_nsec -= 1E9;
-      timeDelay.tv_sec++;
-    }
-
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-    // Reader : Alseep");
-
-    pthread_mutex_lock(&parent->chunkMutex);
-    pthread_cond_timedwait(&parent->chunkCondition, &parent->chunkMutex,
-                           &timeDelay);
-    // pthread_cond_wait(&parent->chunkCondition, &parent->chunkMutex);
-    pthread_mutex_unlock(&parent->chunkMutex);
-
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-    // Reader : Awake");
-
-    if (eTimer.elapsed() > 1000) {
-      eTimer.restart();
-      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-      // Reader : Status : [%1 bytes written]")
-      //                 .arg(bytesWritten);
-      bytesWritten = 0;
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - start)
+            .count() > 1000) {
+      start = now;
+      parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Data Reader : Status : [%d bytes read/sec]",
+                              readSize);
+      readSize = 0;
     }
   }
 
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
-  // exit";
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                            "DataStreamReader exit");
   return nullptr;
 }

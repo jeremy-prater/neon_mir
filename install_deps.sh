@@ -2,7 +2,7 @@
 
 OSVER=`uname -a`
 
-ARCHDEPS="libyaml ffmpeg-compat-57 libavresample python libsamplerate taglib \
+ARCHDEPS="libyaml ffmpeg-compat-57 libavresample python libsamplerate taglib qt4 \
           chromaprint-fftw python-six vamp-plugin-sdk intel-tbb zeromq capnproto"
 
 UBUNTUDEPS="libyaml-dev ffmpeg libavresample-dev qt4-default python libsamplerate0 \

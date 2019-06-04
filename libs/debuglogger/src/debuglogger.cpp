@@ -28,12 +28,11 @@ void DebugLogger::SetDebugColor(DebugColor newColor) noexcept {
 
 void DebugLogger::SetDebugBold(bool bold) noexcept { debugBold = bold; }
 
-void DebugLogger::WriteLog(DebugLogger::DebugLevel level, const char *format, ...) const
-    noexcept {
-
-  static char buffer[DEBUG_LINE_LENGTH];
-  static char levelColor[8];
-  static char tagColor[8];
+void DebugLogger::WriteLog(DebugLogger::DebugLevel level, const char *format,
+                           ...) const noexcept {
+  char buffer[DEBUG_LINE_LENGTH];
+  char levelColor[8];
+  char tagColor[8];
 
   va_list args = {};
   va_start(args, format);

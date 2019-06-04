@@ -15,7 +15,7 @@ do
         mkdir -p build
         cd build
         cmake ${CMAKE_EXTRA} ..
-        make -j 8
+        make -j 16
         sudo make install
     popd
 done

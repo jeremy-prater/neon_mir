@@ -52,7 +52,6 @@ target_link_libraries(${PROJ_NAME}
   kj
   kj-async
   yaml
-  iio
   pthread
   rt
   ${Boost_LIBRARIES}
