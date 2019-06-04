@@ -69,22 +69,8 @@ void NeonPulseInput::moduleInfoCallback(pa_context *c, const pa_module_info *i,
   //                           "used");
 }
 
-void NeonPulseInput::sourceInfoCallback(pa_context *c, const pa_source_info *i,
-                                        int eol, void *userdata) {
-  (void)c;
-
-  if (eol != 0) {
-    return;
-  }
-
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
-  instance->addSource(i);
-}
-
 void NeonPulseInput::stateChangeCallback(pa_context *c, void *userdata) {
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
-
-  switch (UpdateCurrentState(c)) {
+  switch (instance->UpdateCurrentState(c)) {
   case PA_CONTEXT_READY: {
     instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                               "Context state: PA_CONTEXT_READY");
@@ -133,4 +119,10 @@ void NeonPulseInput::successCallback(pa_context *context, int success,
     instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                               "Pulse Audio Command Failed");
   }
+}
+
+void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
+                                       void *userdata) {
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                            "client audio [%d bytes]", nbytes);
 }
