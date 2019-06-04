@@ -1,4 +1,5 @@
-#include "pulse_audio_stream.h"
+#include "pulse_audio_stream.hpp"
+#include <cstring>
 #include <pthread.h>
 #include <unistd.h>
 
@@ -7,88 +8,92 @@
 //  NeonPulseInput Static items...
 //
 
-pa_threaded_mainloop * NeonPulseInput::pulseAudioThread = nullptr;
-pa_mainloop_api * NeonPulseInput::pulseAudioApi = nullptr;
-pa_context * NeonPulseInput::pulseAudioContext = nullptr;
+pa_threaded_mainloop *NeonPulseInput::pulseAudioThread = nullptr;
+pa_mainloop_api *NeonPulseInput::pulseAudioApi = nullptr;
+pa_context *NeonPulseInput::pulseAudioContext = nullptr;
 pa_context_state_t NeonPulseInput::currentState = {};
 uint32_t NeonPulseInput::lockCounter = 0;
-pthread_mutex_t NeonPulseInput::pulseAudioContextMutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-QList<uint32_t> NeonPulseInput::moduleTrashList;
+pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
+    PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // NeonPulseInput Constructor/Destructor
 //
 
-NeonPulseInput::NeonPulseInput() {}
+NeonPulseInput::NeonPulseInput()
+    : logger("PulseAudioInput-" + std::to_string(getpid()),
+             DebugLogger::DebugColor::COLOR_CYAN, false),
+      frameSize(0) {}
 
-NeonPulseInput::~NeonPulseInput() {}
+NeonPulseInput::~NeonPulseInput() { instance = nullptr; }
 
 void NeonPulseInput::ModuleLoadCallback(pa_context *c, uint32_t idx,
                                         void *userdata) {
   (void)c;
+  (void)userdata;
 
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
-  context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                           "Loaded : module-pipe-source [%08x]", idx);
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                            "Loaded : module-pipe-source [%08x]", idx);
   if (idx != 0xFFFFFFFF) {
-    context->fifoModule = idx;
+    instance->fifoModule = idx;
   }
 }
 
 void NeonPulseInput::ModuleUnloadCallback(pa_context *c, int success,
                                           void *userdata) {
   (void)c;
+  (void)userdata;
 
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
   if (success) {
     NeonPulseInput *context = (NeonPulseInput *)userdata;
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                             "Unloaded : module-pipe-source [%08x]",
-                             context->fifoModule);
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                              "Unloaded : module-pipe-source [%08x]",
+                              instance->fifoModule);
   } else {
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                             "Error unloading : module-pipe-source [%08x]",
-                             context->fifoModule);
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                              "Error unloading : module-pipe-source [%08x]",
+                              instance->fifoModule);
   }
-  context->fifoModule = 0;
+  instance->fifoModule = 0;
 
   // TODO : Nofity client that remote end died
-  // context->DestroyStream();
+  // instance->DestroyStream();
 }
 
 void NeonPulseInput::ModuleLoopbackLoadCallback(pa_context *c, uint32_t idx,
                                                 void *userdata) {
   (void)c;
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
+  (void)userdata;
+
   if (idx != 0xFFFFFFFF) {
-    context->loopbackModule = idx;
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                             "Loaded : module-loopback [%08x]",
-                             context->loopbackModule);
+    instance->loopbackModule = idx;
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                              "Loaded : module-loopback [%08x]",
+                              instance->loopbackModule);
   } else {
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                             "Failed to load : module-loopback [%d]",
-                             context->loopbackModule);
-    context->loopbackModule = 0;
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Failed to load : module-loopback [%d]",
+                              instance->loopbackModule);
+    instance->loopbackModule = 0;
   }
 }
 
 void NeonPulseInput::ModuleLoopbackUnloadCallback(pa_context *c, int success,
                                                   void *userdata) {
   (void)c;
+  (void)userdata;
 
-  NeonPulseInput *context = (NeonPulseInput *)userdata;
   if (success) {
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                             "Unloaded : module-loopback [%08x]",
-                             context->loopbackModule);
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                              "Unloaded : module-loopback [%08x]",
+                              instance->loopbackModule);
   } else {
-    context->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                             "Failed to unload : module-loopback [%d]",
-                             context->loopbackModule);
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Failed to unload : module-loopback [%d]",
+                              instance->loopbackModule);
   }
-  context->loopbackModule = 0;
+  instance->loopbackModule = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,23 +106,20 @@ bool NeonPulseInput::PAConnect() {
     return true;
   }
 
-  LockPAAPI(__PRETTY_FUNCTION__);
-
   pulseAudioThread = pa_threaded_mainloop_new();
 
   if (pulseAudioThread == NULL) {
-    qDebug() << "Error connecting to Pulse Audio";
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Error connecting to Pulse Audio");
     return false;
   }
 
   pa_threaded_mainloop_start(pulseAudioThread);
 
-  UnlockPAAPI(__PRETTY_FUNCTION__);
-
   Lock();
   pulseAudioApi = pa_threaded_mainloop_get_api(pulseAudioThread);
 
-  pulseAudioContext = pa_context_new(pulseAudioApi, "car-play-pulse-audio");
+  pulseAudioContext = pa_context_new(pulseAudioApi, "pulse-audio-input");
   pa_context_set_state_callback(pulseAudioContext,
                                 &NeonPulseInput::stateChangeCallback, NULL);
   pa_context_connect(pulseAudioContext, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL);
@@ -126,17 +128,20 @@ bool NeonPulseInput::PAConnect() {
   // Wait for ready state
   uint8_t waitCounter = 0;
   while (currentState != PA_CONTEXT_READY) {
-    // qDebug() << QString("Waiting for PulseAudio context connection... (%1)")
-    //                 .arg(waitCounter);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Waiting for PulseAudio context connection... [%d]",
+                    waitCounter);
     usleep(100 * 1000);
     waitCounter++;
     if (waitCounter == 600) // One minute...?!
     {
-      qDebug() << "PulseAudio context connection timeout.";
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
+                      "PulseAudio context connection timeout.");
       return false;
     }
     if (currentState == PA_CONTEXT_FAILED) {
-      qDebug() << "PulseAudio context connection failed.";
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
+                      "PulseAudio context connection failed.");
       return false;
     }
   }
@@ -156,31 +161,23 @@ bool NeonPulseInput::PAConnect() {
   Unlock();
   WaitForOp(operation);
 
-  while (!moduleTrashList.isEmpty()) {
-    uint32_t index = moduleTrashList.takeLast();
-    // qDebug() << QString("Unloading module [%1]").arg(index);
-    Lock();
-    operation = pa_context_unload_module(pulseAudioContext, index, NULL, NULL);
-    Unlock();
-    WaitForOp(operation);
-  }
-
   return true;
 }
 
 bool NeonPulseInput::Connect() {
 
-  // qDebug() << QString("Connecting to Pulse Audio");
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Connecting to Pulse Audio Source");
 
   pthread_condattr_t attr;
   pthread_condattr_init(&attr);
   pthread_condattr_setclock(&attr, CLOCK_MONOTONIC);
 
-  pthread_cond_init(&chunkCondition, &attr);
-  pthread_mutex_init(&chunkMutex, NULL);
+  // pthread_cond_init(&chunkCondition, &attr);
+  // pthread_mutex_init(&chunkMutex, NULL);
 
-  pthread_cond_init(&streamCondition, &attr);
-  pthread_mutex_init(&streamMutex, NULL);
+  // pthread_cond_init(&streamCondition, &attr);
+  // pthread_mutex_init(&streamMutex, NULL);
 
   return true;
 }
@@ -191,9 +188,9 @@ bool NeonPulseInput::Connect() {
 //
 
 pa_context_state_t NeonPulseInput::UpdateCurrentState(pa_context *context) {
-  LockPAAPI(__PRETTY_FUNCTION__);
+
   currentState = pa_context_get_state(context);
-  UnlockPAAPI(__PRETTY_FUNCTION__);
+
   return currentState;
 }
 
@@ -203,7 +200,7 @@ pa_context_state_t NeonPulseInput::UpdateCurrentState(pa_context *context) {
 //
 
 void NeonPulseInput::Lock() {
-  LockPAAPI(__PRETTY_FUNCTION__);
+  assert(lockCounter == 0);
   pa_threaded_mainloop_lock(pulseAudioThread);
   lockCounter++;
 }
@@ -211,7 +208,7 @@ void NeonPulseInput::Lock() {
 void NeonPulseInput::Unlock() {
   assert(lockCounter != 0);
   pa_threaded_mainloop_unlock(pulseAudioThread);
-  UnlockPAAPI(__PRETTY_FUNCTION__);
+
   lockCounter--;
 }
 
@@ -233,28 +230,33 @@ void NeonPulseInput::WaitForOp(pa_operation *operation) {
 
     waitCounter++;
     if (waitCounter > 5) {
-      qDebug() << QString(
-                      "PulseAudio command response is taking too long! %1 ms")
-                      .arg(waitCounter * 100);
+      instance->logger.WriteLog(
+          DebugLogger::DebugLevel::DEBUG_WARNING,
+          "PulseAudio command response is taking too long! %d ms",
+          waitCounter * 100);
     }
     if (waitCounter == 50) {
-      qDebug() << "PulseAudio command response timed out. 5 seconds.";
+      instance->logger.WriteLog(
+          DebugLogger::DebugLevel::DEBUG_WARNING,
+          "PulseAudio command response timed out. 5 seconds.");
     }
   }
 
-  LockPAAPI(__PRETTY_FUNCTION__);
   pa_operation_unref(operation);
-  UnlockPAAPI(__PRETTY_FUNCTION__);
 }
 
-void NeonPulseInput::CreateStream(uint32_t rate, uint8_t bits, uint8_t channels,
-                                  const char *name, bool bigEndian, bool sign) {
+void NeonPulseInput::CreateStream(const std::string name, uint32_t rate,
+                                  uint8_t bits, uint8_t channels,
+                                  bool bigEndian, bool sign) {
+  sourceName = name;
   if (!sign) {
-    qDebug() << "Unable to create unsigned stream!";
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Unable to create unsigned stream!");
     return;
   }
 
-  // qDebug() << QString("Creating module-pipe-source");
+  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                            "Creating module-pipe-source");
 
   const char *format = nullptr;
   const char *channelmap = nullptr;
@@ -270,7 +272,8 @@ void NeonPulseInput::CreateStream(uint32_t rate, uint8_t bits, uint8_t channels,
     format = bigEndian ? "s32be" : "s32le";
     break;
   default:
-    qDebug() << QString("Unknown number of bit depth [%1]").arg(bits);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Unknown bit depth [%d]", bits);
     break;
   }
 
@@ -281,41 +284,33 @@ void NeonPulseInput::CreateStream(uint32_t rate, uint8_t bits, uint8_t channels,
 
   } else {
     channelmap = "";
-    qDebug() << QString("Unknown number of channels [%1]").arg(channels);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Unknown number of channels [%d]", channels);
   }
 
   frameSize = (bits / 8) * channels;
 
   char argBuffer[1024];
   memset(argBuffer, 0, 1024);
-  if (strlen(name) == 0) {
-    name = "alt";
-  }
 
-  memset(nameBuffer, 0, 256);
-  snprintf(nameBuffer, 256, "%s", name);
+  auto nameBuffer = sourceName.c_str();
 
   snprintf(argBuffer, 1024,
            "source_name=%s format=%s rate=%d channels=%d channel_map=%s "
            "file=/tmp/%s.fifo",
            nameBuffer, format, rate, channels, channelmap, nameBuffer);
 
-  LockPAAPI(__PRETTY_FUNCTION__);
-
   // Load module-pipe-source
-  // qDebug() << QString("Loading module-pipe-source [%1]").arg(argBuffer);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Loading module-pipe-source [%s]", argBuffer);
   pa_context_load_module(pulseAudioContext, "module-pipe-source", argBuffer,
                          NeonPulseInput::ModuleLoadCallback, this);
-
-  UnlockPAAPI(__PRETTY_FUNCTION__);
-
-  streamReadRunning = true;
-  streamChunkOutputTime = 0;
 }
 
 void NeonPulseInput::DestroyStream() {
   if (fifoModule != 0) {
-    // qDebug() << QString("Unloading module-pipe-source [%1]").arg(fifoModule);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Unloading module-pipe-source [%d]", fifoModule);
 
     Lock();
     pa_operation *operation =
@@ -327,16 +322,16 @@ void NeonPulseInput::DestroyStream() {
 }
 
 void NeonPulseInput::StartStream() {
-  // qDebug() << QString("Stream : Start Stream");
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Start Stream");
 
-  QString filepath = QString("/tmp/%1.fifo").arg(nameBuffer);
+  std::string filepath = std::string("/tmp/") + sourceName + (".fifo");
 
   // Wait for FIFO to exist...
   int timer = 0;
   while (!QFile::exists(filepath)) {
     usleep(20 * 1000);
     if (timer >= 50)
-      qDebug() << QString("Waiting for fifo [%1] [%2 ms]")
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Waiting for fifo [%1] [%2 ms]")
                       .arg(filepath.split("/").takeLast())
                       .arg(++timer * 20);
   }
@@ -347,19 +342,20 @@ void NeonPulseInput::StartStream() {
   snprintf(argBuffer, 1024, "source=%s sink_input_properties=\"media.name=%s\"",
            nameBuffer, nameBuffer);
 
-  // qDebug() << QString("Loading module-loopback [%1]").arg(argBuffer);
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Loading
+  // module-loopback [%1]").arg(argBuffer);
 
-  LockPAAPI(__PRETTY_FUNCTION__);
   pa_context_load_module(pulseAudioContext, "module-loopback", argBuffer,
                          NeonPulseInput::ModuleLoopbackLoadCallback, this);
-  UnlockPAAPI(__PRETTY_FUNCTION__);
 
   // Open Stream FIFO
   fifoFile = new QFile(filepath);
   if (fifoFile->open(QIODevice::WriteOnly)) {
-    // qDebug() << QString("Opened module-pipe-source FIFO");
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Opened
+    // module-pipe-source FIFO");
 
-    // qDebug() << QString("Starting Writer Thread");
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Starting
+    // Writer Thread");
     pthread_attr_t threadAttributes;
     sched_param threadScheduleParameters;
     pthread_attr_init(&threadAttributes);
@@ -371,18 +367,19 @@ void NeonPulseInput::StartStream() {
     pthread_attr_setschedparam(&threadAttributes, &threadScheduleParameters);
     if (pthread_create(&writerThread, /*&threadAttributes*/ nullptr,
                        NeonPulseInput::DataStreamWriter, this)) {
-      qDebug() << "Failed to create DataStreamWriter thread : " << errno;
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Failed to create DataStreamWriter thread : " << errno;
     }
 
   } else {
     delete fifoFile;
     fifoFile = nullptr;
-    qDebug() << QString("Failed to open module-pipe-source FIFO");
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Failed to open module-pipe-source FIFO");
   }
 }
 
 void NeonPulseInput::StopStream() {
-  // qDebug() << QString("Closed module-pipe-source FIFO");
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Closed
+  // module-pipe-source FIFO");
 
   // Close Stream FIFO
   if (fifoFile != nullptr) {
@@ -392,7 +389,8 @@ void NeonPulseInput::StopStream() {
   streamReadRunning = false;
 
   if (loopbackModule != 0) {
-    // qDebug() << QString("Unloading module-loopback
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Unloading
+    // module-loopback
     // [%1]").arg(loopbackModule);
 
     Lock();
@@ -407,7 +405,8 @@ void NeonPulseInput::StopStream() {
 void NeonPulseInput::AddStreamChunk(uint8_t *data, uint32_t length) {
   // Write data to FIFO
   fifoLock.lock();
-  // qDebug() << "Adding chunk : " << length;
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Adding
+  // chunk : " << length;
   fifoQueue.append((const char *)data, (int)length);
   totalBytes += length;
   fifoLock.unlock();
@@ -424,7 +423,8 @@ void NeonPulseInput::ProcessStreamData() {
 }
 
 void *NeonPulseInput::DataStreamWriter(void *arg) {
-  // qDebug() << "DataStreamWriter Start";
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+  // Start";
 
   NeonPulseInput *parent = (NeonPulseInput *)arg;
   struct timespec timeDelay;
@@ -432,7 +432,8 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
   /*if (streamChunkBufferHead == streamChunkBufferTail)
   {
       pendingStreamData = true;
-      //qDebug() << QString("Stream Request Data : Queue empty!");
+      //instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Stream
+  Request Data : Queue empty!");
   }
   else
   {*/
@@ -445,12 +446,14 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
   while (parent->streamReadRunning) {
     uint32_t bufferSize = 0;
     uint32_t writtenSize = 0;
-    // qDebug() << "DataStreamWriter : loop" << bufferSize;
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+    // : loop" << bufferSize;
     if ((parent->fifoFile != nullptr) && parent->fifoFile->isOpen()) {
       parent->fifoLock.lock();
       bufferSize = parent->fifoQueue.size();
       if (bufferSize > 0) {
-        // qDebug() << "Writing to queue : " << bufferSize;
+        // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Writing
+        // to queue : " << bufferSize;
         writtenSize = parent->fifoFile->write(parent->fifoQueue);
         parent->fifoQueue.clear();
       }
@@ -458,11 +461,12 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
     }
 
     if (writtenSize > 0) {
-      // qDebug() << QString("Data Writer : Wrote [%1 bytes]").arg(writtenSize);
+      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
+      // Writer : Wrote [%1 bytes]").arg(writtenSize);
       parent->streamChunkOutputTime += (writtenSize / parent->frameSize);
       bytesWritten += writtenSize;
       if (writtenSize != bufferSize) {
-        qDebug() << QString(
+        instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString(
                         "Failed to write to module-pipe-source FIFO [%1]!=[%2]")
                         .arg(writtenSize)
                         .arg(bufferSize);
@@ -475,7 +479,8 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
       timeDelay.tv_sec++;
     }
 
-    // qDebug() << QString("Data Writer : Alseep");
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
+    // Writer : Alseep");
 
     pthread_mutex_lock(&parent->chunkMutex);
     pthread_cond_timedwait(&parent->chunkCondition, &parent->chunkMutex,
@@ -483,16 +488,19 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
     // pthread_cond_wait(&parent->chunkCondition, &parent->chunkMutex);
     pthread_mutex_unlock(&parent->chunkMutex);
 
-    // qDebug() << QString("Data Writer : Awake");
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
+    // Writer : Awake");
 
     if (eTimer.elapsed() > 1000) {
       eTimer.restart();
-      // qDebug() << QString("Data Writer : Status : [%1 bytes written]")
+      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
+      // Writer : Status : [%1 bytes written]")
       //                 .arg(bytesWritten);
       bytesWritten = 0;
     }
   }
 
-  // qDebug() << "DataStreamWriter exit";
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+  // exit";
   return nullptr;
 }

@@ -1,18 +1,20 @@
-cmake_minimum_required (VERSION 3.1)
+cmake_minimum_required (VERSION 3.9)
 
-set (PROJ_NAME neon-mir)
+set (PROJ_NAME pulse-audio-input)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project (${PROJ_NAME})
+project (${PROJ_NAME} VERSION 1.0 DESCRIPTION "RAW PCM audio stream from PulseAudio")
 
 # for finding libraries
 INCLUDE(FindPkgConfig)
 
 find_package(Boost COMPONENTS system filesystem REQUIRED)
-find_package(debuglogger REQUIRED)
+find_package(PulseAudio)
+find_package(debuglogger)
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -23,21 +25,43 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 
 # Source Files
 set(NEON_MIR_SRC
-  ${PROJECT_SOURCE_DIR}/src/session-server.cpp
-  ${PROJECT_SOURCE_DIR}/src/debuglogger.cpp
-  ${PROJECT_SOURCE_DIR}/src/audio-session.cpp
-  ${PROJECT_SOURCE_DIR}/src/neon-mir.cpp
-  ${PROJECT_SOURCE_DIR}/src/essentia.cpp
-  ${PROJECT_SOURCE_DIR}/src/essentia-session.cpp
-  neon.session.capnp.c++
+  ${PROJECT_SOURCE_DIR}/src/pulse_audio_stream.cpp
+  ${PROJECT_SOURCE_DIR}/src/pulse_audio_callbacks.cpp
 )
 
-# Generate capnp headers
-execute_process(COMMAND capnp compile --src-prefix=../metadata -oc++ ${CMAKE_SOURCE_DIR}/metadata/neon.session.capnp)
-
 # Define the output executable
-add_executable(${PROJ_NAME} ${NEON_MIR_SRC})
+add_library(${PROJ_NAME} SHARED
+  ${NEON_MIR_SRC})
 
-target_link_libraries(${PROJ_NAME} essentia avformat avcodec avutil capnp capnp-rpc zmq kj kj-async yaml iio pthread rt ${Boost_LIBRARIES})
+set_target_properties(${PROJ_NAME} PROPERTIES SOVERSION 1)
+set_target_properties(${PROJ_NAME} PROPERTIES PUBLIC_HEADER
+                      "include/pulse_audio_stream.hpp")
 
-install(TARGETS ${PROJ_NAME} RUNTIME DESTINATION bin)
+set(INCLUDE_INSTALL_DIR include/ )
+set(LIB_INSTALL_DIR lib/ )
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  ./metadata/${PROJ_NAME}Config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}Config.cmake
+  INSTALL_DESTINATION ${LIB_INSTALL_DIR}/${PROJ_NAME}/cmake
+  PATH_VARS INCLUDE_INSTALL_DIR
+)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}ConfigVersion.cmake
+  VERSION 1.0.0
+  COMPATIBILITY SameMajorVersion
+)
+
+install(
+  TARGETS ${PROJ_NAME}
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+)
+
+install(
+  FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}Config.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/${PROJ_NAME}ConfigVersion.cmake
+  DESTINATION ${LIB_INSTALL_DIR}/${PROJ_NAME}/cmake
+)

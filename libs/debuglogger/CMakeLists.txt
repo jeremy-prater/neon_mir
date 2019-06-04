@@ -7,14 +7,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# project (${PROJ_NAME} VERSION 1.0 DESCRIPTION "Get RAW PCM data from a Pulse Audio Source")
 project (${PROJ_NAME} VERSION 1.0 DESCRIPTION "Best C++ debug logger ever")
 
 # for finding libraries
 INCLUDE(FindPkgConfig)
 
 find_package(Boost COMPONENTS system filesystem REQUIRED)
-find_package(PulseAudio)
 
 set(CMAKE_BUILD_TYPE Debug)
 
@@ -31,9 +29,6 @@ set(NEON_MIR_SRC
 # Define the output executable
 add_library(${PROJ_NAME} SHARED
   ${NEON_MIR_SRC})
-
-# We Don't link libraries into librares...
-# target_link_libraries(${Boost_LIBRARIES} ${PulseAudio_LIBRARIES})
 
 set_target_properties(${PROJ_NAME} PROPERTIES SOVERSION 1)
 set_target_properties(${PROJ_NAME} PROPERTIES PUBLIC_HEADER

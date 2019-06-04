@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+set_and_check(pulse-audio-input_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
+# set_and_check(pulse-audio-input_SYSCONFIG_DIR "@PACKAGE_SYSCONFIG_INSTALL_DIR@")
+
+set(pulse-audio-input_LIBRARIES "pulse-audio-input")
+
+check_required_components(pulse-audio-input)
