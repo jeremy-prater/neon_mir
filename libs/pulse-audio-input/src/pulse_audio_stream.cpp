@@ -372,6 +372,12 @@ void NeonPulseInput::addSource(const pa_source_info *info) {
     format.bigEndian = true;
     format.sign = true;
     break;
+  default:
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Unknown sample format [%d]",
+                              info->sample_spec.format);
+
+    break;
   }
   neonAudioSources[info->index] = format;
 }
@@ -473,6 +479,7 @@ void NeonPulseInput::StartStream() {
   }
 
   // Load module-loopback
+#ifdef LOOPBACK
   const char *nameBuffer = sourceName.c_str();
   char argBuffer[1024];
   memset(argBuffer, 0, 1024);
@@ -484,6 +491,7 @@ void NeonPulseInput::StartStream() {
 
   pa_context_load_module(pulseAudioContext, "module-loopback", argBuffer,
                          NeonPulseInput::ModuleLoopbackLoadCallback, this);
+#endif
 
   // Open Stream FIFO
   fifoFile = open(filepath.c_str(), O_RDONLY);
@@ -562,12 +570,11 @@ void *NeonPulseInput::DataStreamReader(void *arg) {
   while (parent->streamReadRunning && !eof) {
     uint32_t readSize = 0;
 
-    // parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-    //                         "DataStreamReader : loop");
-    /* select returns 0 if timeout, 1 if input available, -1 if error. */
-    int result = select(FD_SETSIZE, &fdSet, NULL, NULL, &timeout);
+    int result = select(parent->fifoFile + 1, &fdSet, NULL, NULL, &timeout);
+
     if (result == 0) {
-      // Timeout occured...
+      // parent->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+      //                         "DataStreamReader : select timeout");
       continue;
     } else if (result == 1) {
       // Data is ready!
