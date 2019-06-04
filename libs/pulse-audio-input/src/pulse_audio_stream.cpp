@@ -29,7 +29,7 @@ pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
 NeonPulseInput::NeonPulseInput()
     : logger("PulseAudioInput-" + std::to_string(getpid()),
              DebugLogger::DebugColor::COLOR_CYAN, false),
-      frameSize(0), fifoFile(0) {}
+      streamReadRunning(false), frameSize(0), fifoFile(0) {}
 
 NeonPulseInput::~NeonPulseInput() { instance = nullptr; }
 
@@ -63,6 +63,7 @@ void NeonPulseInput::ModuleUnloadCallback(pa_context *c, int success,
   instance->fifoModule = 0;
 
   // TODO : Nofity client that remote end died
+  // TODO: Is this needed?
   // instance->DestroyStream();
 }
 
@@ -449,9 +450,8 @@ void *NeonPulseInput::DataStreamReader(void *arg) {
   {*/
   usleep(50 * 1000);
 
-  QElapsedTimer eTimer;
-  eTimer.start();
   clock_gettime(CLOCK_MONOTONIC, &timeDelay);
+  parent->streamReadRunning = true;
   uint32_t bytesWritten = 0;
   while (parent->streamReadRunning) {
     uint32_t bufferSize = 0;

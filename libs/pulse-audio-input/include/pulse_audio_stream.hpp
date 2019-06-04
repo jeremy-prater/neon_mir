@@ -50,6 +50,7 @@ private:
 
   DebugLogger logger;
 
+  bool streamReadRunning;
   int frameSize;
   int fifoFile;
   std::string sourceName;
