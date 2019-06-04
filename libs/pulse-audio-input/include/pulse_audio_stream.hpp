@@ -17,8 +17,10 @@ public:
 
   void CreateStream(const std::string name, uint32_t rate, uint8_t bits,
                     uint8_t channels, bool bigEndian, bool sign);
-  void StartStream();
   void DestroyStream();
+
+  void StartStream();
+  void StopStream();
 
 private:
   static void Lock();
@@ -44,10 +46,14 @@ private:
   static void eventCallback(pa_context *c, pa_subscription_event_type_t t,
                             uint32_t index, void *userdata);
 
+  static void *DataStreamReader(void *arg);
+
   DebugLogger logger;
 
   int frameSize;
+  int fifoFile;
   std::string sourceName;
+  pthread_t readerThread;
 
   static NeonPulseInput *instance;
 

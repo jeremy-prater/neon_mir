@@ -1,6 +1,11 @@
 #include "pulse_audio_stream.hpp"
 #include <cstring>
+#include <fcntl.h>
 #include <pthread.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +29,7 @@ pthread_mutex_t NeonPulseInput::pulseAudioContextMutex =
 NeonPulseInput::NeonPulseInput()
     : logger("PulseAudioInput-" + std::to_string(getpid()),
              DebugLogger::DebugColor::COLOR_CYAN, false),
-      frameSize(0) {}
+      frameSize(0), fifoFile(0) {}
 
 NeonPulseInput::~NeonPulseInput() { instance = nullptr; }
 
@@ -328,34 +333,38 @@ void NeonPulseInput::StartStream() {
 
   // Wait for FIFO to exist...
   int timer = 0;
-  while (!QFile::exists(filepath)) {
+  struct stat fifoStat;
+  while (stat(filepath.c_str(), &fifoStat) == -1) {
     usleep(20 * 1000);
     if (timer >= 50)
-      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Waiting for fifo [%1] [%2 ms]")
-                      .arg(filepath.split("/").takeLast())
-                      .arg(++timer * 20);
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                      "Waiting for fifo [%s] [%d ms]", filepath.c_str(),
+                      timer * 20);
+    timer++;
   }
 
   // Load module-loopback
+  const char *nameBuffer = sourceName.c_str();
   char argBuffer[1024];
   memset(argBuffer, 0, 1024);
   snprintf(argBuffer, 1024, "source=%s sink_input_properties=\"media.name=%s\"",
            nameBuffer, nameBuffer);
 
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Loading
-  // module-loopback [%1]").arg(argBuffer);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                  "Loading module-loopback [%s]", argBuffer);
 
   pa_context_load_module(pulseAudioContext, "module-loopback", argBuffer,
                          NeonPulseInput::ModuleLoopbackLoadCallback, this);
 
   // Open Stream FIFO
-  fifoFile = new QFile(filepath);
-  if (fifoFile->open(QIODevice::WriteOnly)) {
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Opened
-    // module-pipe-source FIFO");
+  fifoFile = open(filepath.c_str(), O_RDONLY);
+  if (fifoFile != -1) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Opened module-pipe-source FIFO [%d]", fifoFile);
 
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Starting
-    // Writer Thread");
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Starting Reader Thread");
+
     pthread_attr_t threadAttributes;
     sched_param threadScheduleParameters;
     pthread_attr_init(&threadAttributes);
@@ -365,33 +374,34 @@ void NeonPulseInput::StartStream() {
     threadScheduleParameters.sched_priority =
         sched_get_priority_max(SCHED_FIFO);
     pthread_attr_setschedparam(&threadAttributes, &threadScheduleParameters);
-    if (pthread_create(&writerThread, /*&threadAttributes*/ nullptr,
-                       NeonPulseInput::DataStreamWriter, this)) {
-      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"Failed to create DataStreamWriter thread : " << errno;
+    if (pthread_create(&readerThread, /*&threadAttributes*/ nullptr,
+                       NeonPulseInput::DataStreamReader, this)) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "Failed to create DataStreamReader thread [%s]",
+                                errno);
     }
 
   } else {
-    delete fifoFile;
-    fifoFile = nullptr;
-    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Failed to open module-pipe-source FIFO");
+    fifoFile = 0;
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
+                    "Failed to open module-pipe-source FIFO [%s]",
+                    strerror(errno));
   }
 }
 
 void NeonPulseInput::StopStream() {
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Closed
-  // module-pipe-source FIFO");
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Closing module-pipe-source FIFO [%d]", fifoFile);
 
   // Close Stream FIFO
-  if (fifoFile != nullptr) {
-    fifoFile->close();
-  }
+  close(fifoFile);
+  fifoFile = -1;
 
   streamReadRunning = false;
 
   if (loopbackModule != 0) {
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Unloading
-    // module-loopback
-    // [%1]").arg(loopbackModule);
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Unloading module-loopback [%d]", loopbackModule);
 
     Lock();
     pa_operation *operation = pa_context_unload_module(
@@ -422,8 +432,8 @@ void NeonPulseInput::ProcessStreamData() {
   pthread_cond_signal(&chunkCondition);
 }
 
-void *NeonPulseInput::DataStreamWriter(void *arg) {
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+void *NeonPulseInput::DataStreamReader(void *arg) {
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
   // Start";
 
   NeonPulseInput *parent = (NeonPulseInput *)arg;
@@ -446,7 +456,7 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
   while (parent->streamReadRunning) {
     uint32_t bufferSize = 0;
     uint32_t writtenSize = 0;
-    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+    // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
     // : loop" << bufferSize;
     if ((parent->fifoFile != nullptr) && parent->fifoFile->isOpen()) {
       parent->fifoLock.lock();
@@ -462,7 +472,7 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
 
     if (writtenSize > 0) {
       // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-      // Writer : Wrote [%1 bytes]").arg(writtenSize);
+      // Reader : Wrote [%1 bytes]").arg(writtenSize);
       parent->streamChunkOutputTime += (writtenSize / parent->frameSize);
       bytesWritten += writtenSize;
       if (writtenSize != bufferSize) {
@@ -480,7 +490,7 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
     }
 
     // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-    // Writer : Alseep");
+    // Reader : Alseep");
 
     pthread_mutex_lock(&parent->chunkMutex);
     pthread_cond_timedwait(&parent->chunkCondition, &parent->chunkMutex,
@@ -489,18 +499,18 @@ void *NeonPulseInput::DataStreamWriter(void *arg) {
     pthread_mutex_unlock(&parent->chunkMutex);
 
     // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-    // Writer : Awake");
+    // Reader : Awake");
 
     if (eTimer.elapsed() > 1000) {
       eTimer.restart();
       // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,QString("Data
-      // Writer : Status : [%1 bytes written]")
+      // Reader : Status : [%1 bytes written]")
       //                 .arg(bytesWritten);
       bytesWritten = 0;
     }
   }
 
-  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamWriter
+  // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,"DataStreamReader
   // exit";
   return nullptr;
 }
