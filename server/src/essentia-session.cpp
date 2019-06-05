@@ -24,18 +24,43 @@ void NeonEssentiaSession::updateAudioDataFromBuffer() noexcept {
   auto it = AudioSession::activeSessions.find(
       boost::uuids::string_generator()(audioSessionID));
 
+  audioVectorData.clear();
+
   if (it == AudioSession::activeSessions.end()) {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                     "Unknown Session UUID [%s]", audioSessionID.c_str());
   } else {
-    std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
+    auto audioSession = it->second;
+    std::scoped_lock<std::mutex> lock(audioSession->audioSinkMutex);
 
-    auto circlarBuffer = it->second->getAudioSink();
-    for (auto value : *circlarBuffer)
-      audioVectorData.push_back(value);
+    auto circlarBuffer = audioSession->getAudioSink();
 
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "sizes [%d][%d]",
-                    circlarBuffer->size(), audioVectorData.size());
+    switch (audioSession->getWidth()) {
+    case 8: {
+      for (auto value : *circlarBuffer)
+        audioVectorData.push_back(value);
+
+    } break;
+    case 16: {
+      auto it = circlarBuffer->begin();
+      while (it != circlarBuffer->end()) {
+        int16_t value = 0;
+        value |= *it++ << 0;
+        value |= *it++ << 8;
+        if (audioSession->getChannels() == 2) {
+          it++;
+          it++;
+        }
+        essentia::Real rValue = static_cast<essentia::Real>(value) / SHRT_MAX;
+        audioVectorData.push_back(rValue);
+      }
+    } break;
+    default:
+      break;
+    }
+
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Samples in buffer [%d]", audioVectorData.size());
   }
 }
 
@@ -52,7 +77,7 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
       new essentia::streaming::VectorInput<essentia::Real>(&audioVectorData);
 
   auto rhythmExtractor =
-      algorithmFactory.create("rhythmExtractor2013", "method", "multifeature");
+      algorithmFactory.create("RhythmExtractor2013", "method", "multifeature");
 
   {
     std::scoped_lock<std::mutex> lock(algorithmMapMutex);
@@ -62,13 +87,11 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
 
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Connecting Algorithms");
 
-  essentia::streaming::connect(*audioVectorInput,
-                               rhythmExtractor->input("signal"));
-
+  audioVectorInput->output("data") >> rhythmExtractor->input("signal");
   rhythmExtractor->output("ticks") >>
       essentia::streaming::PoolConnector(pool, "rhythm.ticks");
   rhythmExtractor->output("confidence") >>
-      essentia::streaming::PoolConnector(pool, "rhythm.ticks_confidence");
+      essentia::streaming::PoolConnector(pool, "rhythm.confidence");
   rhythmExtractor->output("bpm") >>
       essentia::streaming::PoolConnector(pool, "rhythm.bpm");
   rhythmExtractor->output("estimates") >>
@@ -81,15 +104,23 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
 
 void NeonEssentiaSession::runBPMPipeline(essentia::Real *bpm,
                                          essentia::Real *confidence) {
-  if (!audioVectorData.size() < 4096)
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Running BPM Pipeline");
+
+  updateAudioDataFromBuffer();
+
+  if (!audioVectorData.size())
     return;
 
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Running Algorithms");
+  audioVectorInput->setVector(&audioVectorData);
   audioNetwork->run();
 
-  *bpm = pool.value<essentia::Real>("rhythm.bpm"),
-  *confidence = pool.value<essentia::Real>("rhythm.ticks_confidence") / 0.0532;
+  essentia::Real newBpm = pool.value<essentia::Real>("rhythm.bpm");
+  essentia::Real newConfidence =
+      pool.value<essentia::Real>("rhythm.confidence") / 0.0532;
 
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                  "Results : BPM [%f] Confidence [%f%%]", bpm, confidence);
+  *bpm = newBpm;
+  *confidence = newConfidence;
+
+  pool.clear();
+  audioNetwork->reset();
 }

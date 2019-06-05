@@ -9,7 +9,7 @@ static std::string bpmUUID;
 
 AudioProcessor::AudioProcessor()
     : handle("test-pipeline"), defaultSampleRate(44100), defaultChannels(2),
-      defaultWidth(16), defaultDurationMs(10 * 1000),
+      defaultWidth(16), defaultDurationMs(5 * 1000),
       audioProcessorThreadRunning(true),
       logger("AudioProcessor-", DebugLogger::DebugColor::COLOR_RED, false) {
   audioProcessorThread = std::thread(&AudioProcessor::audioProcessorLoop, this);

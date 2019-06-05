@@ -31,13 +31,10 @@ public:
   void updateConfig(uint32_t newSampleRate, uint8_t newChannels,
                     uint8_t newWidth, double newDuration);
 
-  // Create audio processing pipelines
-
-  // This might be dynamic...
-
-  // Start the pipeline
-
-  // Extract information about the current 'frame'
+  const uint32_t getSampleRate() const noexcept;
+  const uint8_t getChannels() const noexcept;
+  const uint8_t getWidth() const noexcept;
+  const double getDuration() const noexcept;
 
   // push raw audio data into the pipeline
   std::mutex audioSinkMutex;
@@ -50,6 +47,6 @@ private:
   uint8_t channels;
   uint8_t width;
   double duration;
-  
+
   DebugLogger logger;
 };

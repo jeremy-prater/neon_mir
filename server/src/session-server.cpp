@@ -75,9 +75,10 @@ SessionServer::Handler::~Handler() {}
 
 kj::Promise<void>
 SessionServer::Handler::createSession(CreateSessionContext context) {
+  std::string name = context.getParams().getName();
   instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                             "Received Create Session Request for [%s]",
-                            context.getParams().getName().cStr());
+                            name.c_str());
 
   boost::uuids::uuid uuid;
   std::shared_ptr<AudioSession> newSession;
@@ -102,6 +103,8 @@ SessionServer::Handler::createSession(CreateSessionContext context) {
   }
 
   std::string uuidString = boost::uuids::to_string(uuid);
+  if (name.find("Test-Client-") != std::string::npos)
+    uuidString = name;
   context.getResults().setUuid(uuidString);
 
   return kj::READY_NOW;
@@ -109,9 +112,10 @@ SessionServer::Handler::createSession(CreateSessionContext context) {
 
 kj::Promise<void>
 SessionServer::Handler::releaseSession(ReleaseSessionContext context) {
-  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                            "Received Destroy Session Request for [%s]",
-                            context.getParams().getUuid().cStr());
+  instance->logger.WriteLog(
+      DebugLogger::DebugLevel::DEBUG_WARNING,
+      "NOT IMPLEMENTED ==> Received Destroy Session Request for [%s]",
+      context.getParams().getUuid().cStr());
 
   // TODO : implement
   return kj::READY_NOW;
@@ -234,6 +238,22 @@ SessionServer::Handler::createBPMPipeLine(CreateBPMPipeLineContext context) {
     context.getResults().setUuid(uuidString);
   }
 
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(audioSessionUUID));
+    if (it == AudioSession::activeSessions.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "activeSession UUID not found [%s]",
+                                audioSessionUUID.c_str());
+    } else {
+      auto audioSession = it->second;
+      newSession->createBPMPipeline(
+          audioSession->getSampleRate(), audioSession->getChannels(),
+          audioSession->getWidth(), audioSession->getDuration());
+    }
+  }
+
   return kj::READY_NOW;
 }
 
@@ -252,6 +272,9 @@ SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
       essentia::Real bpm;
       essentia::Real confidence;
       it->second->runBPMPipeline(&bpm, &confidence);
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                      "Results : BPM [%f] Confidence [%f%%]", bpm, confidence);
+
       auto result = context.getResults().initResult();
       result.setBpm(bpm);
       result.setConfidence(bpm);

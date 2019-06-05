@@ -58,6 +58,13 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   // essentiaSession.createBPMPipeline(sampleRate, channels, width, duration);
 }
 
+const uint32_t AudioSession::getSampleRate() const noexcept {
+  return sampleRate;
+}
+const uint8_t AudioSession::getChannels() const noexcept { return channels; }
+const uint8_t AudioSession::getWidth() const noexcept { return width; }
+const double AudioSession::getDuration() const noexcept { return duration; }
+
 boost::circular_buffer<uint8_t> *AudioSession::getAudioSink() {
   return &audioData;
 }
