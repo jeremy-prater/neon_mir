@@ -151,7 +151,7 @@ void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
   } else if (audioDataSize) {
     // We actually have audio data!
     // We'll just assume int16_t for now...
-    instance->newData(audioData, audioDataSize);
+    instance->newData(static_cast<const capnp::byte *>(audioData), audioDataSize);
     pa_stream_drop(p);
   } else {
     instance->logger.WriteLog(

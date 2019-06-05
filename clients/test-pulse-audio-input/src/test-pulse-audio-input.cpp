@@ -2,6 +2,7 @@
 #include "pulse_audio_stream.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <capnp/common.h>
 #include <unistd.h>
 
 //////////////////////////////////////////////////////////////////////
@@ -14,7 +15,7 @@ public:
   AudioProcessor();
   ~AudioProcessor();
 
-  void processAudio(const void *data, const size_t size);
+  void processAudio(const capnp::byte *data, const size_t size);
 
 private:
   DebugLogger logger;
@@ -33,7 +34,7 @@ AudioProcessor::AudioProcessor()
 
 AudioProcessor::~AudioProcessor() {}
 
-void AudioProcessor::processAudio(const void *data, const size_t size) {
+void AudioProcessor::processAudio(const capnp::byte *data, const size_t size) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Processing Chunk [%d]",
                   size);
 }

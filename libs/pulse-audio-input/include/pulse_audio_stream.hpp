@@ -5,6 +5,7 @@
 #include <pulse/pulseaudio.h>
 #include <stdint.h>
 #include <unordered_map>
+#include <capnp/common.h>
 
 class NeonPulseInput {
 public:
@@ -18,7 +19,9 @@ public:
                     const pa_sample_format_t format);
   void DestroyStream();
 
-  boost::signals2::signal<void(const void *data, const size_t size)> newData;
+  boost::signals2::signal<void(const capnp::byte *musicData,
+                               const size_t musicDataLength)>
+      newData;
 
 private:
   void Lock();
