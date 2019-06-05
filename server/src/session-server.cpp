@@ -1,5 +1,6 @@
 #include "session-server.hpp"
 #include "audio-session.hpp"
+#include "boost/uuid/random_generator.hpp"
 #include "boost/uuid/string_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
 #include "capnp/ez-rpc.h"
@@ -78,28 +79,29 @@ SessionServer::Handler::createSession(CreateSessionContext context) {
                             "Received Create Session Request for [%s]",
                             context.getParams().getName().cStr());
 
+  boost::uuids::uuid uuid;
   std::shared_ptr<AudioSession> newSession;
-  bool collision = false;
 
+  bool collision = false;
   {
     std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+
     do {
-      newSession = std::make_shared<AudioSession>();
-      auto it = AudioSession::activeSessions.find(newSession->uuid);
+      uuid = boost::uuids::random_generator()();
+      auto it = AudioSession::activeSessions.find(uuid);
       if (it != AudioSession::activeSessions.end()) {
-        instance->logger.WriteLog(
-            DebugLogger::DebugLevel::DEBUG_WARNING,
-            "activeSession UUID collision [%s]",
-            boost::uuids::to_string(newSession->uuid).c_str());
+        instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                  "activeSession UUID collision [%s]",
+                                  boost::uuids::to_string(uuid).c_str());
         collision = true;
       }
     } while (collision);
-    AudioSession::activeSessions[newSession->uuid] = newSession;
-  }
-  std::string uuidString = boost::uuids::to_string(newSession->uuid);
 
-  // For testing!!
-  // context.getResults().setUuid(context.getParams().getName());
+    newSession = std::make_shared<AudioSession>(uuid);
+    AudioSession::activeSessions[uuid] = newSession;
+  }
+
+  std::string uuidString = boost::uuids::to_string(uuid);
   context.getResults().setUuid(uuidString);
 
   return kj::READY_NOW;
@@ -160,7 +162,7 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
         boost::uuids::string_generator()(uuid));
     if (it == AudioSession::activeSessions.end()) {
       instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                                "Unknown UUID [%s]", uuid.c_str());
+                                "Unknown Session UUID [%s]", uuid.c_str());
     } else {
       std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
       // Transform data...??
@@ -170,96 +172,92 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
       for (auto audioByte : newAudio)
         output->push_back(audioByte);
 
-      // instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-      //                           "pushAudioData - circular buffer size[%s]
-      //                           [%d]", uuid.c_str(), output->size());
+      // instance->logger.WriteLog(
+      //     DebugLogger::DebugLevel::DEBUG_STATUS,
+      //     "pushAudioData - circular buffer size [%s] [%d]", uuid.c_str(),
+      //     output->size());
     }
   }
 
   return kj::READY_NOW;
 }
-// void SessionServer::operator()(SessionServerServer::request const &request,
-//                              SessionServerServer::connection_ptr
-//                              connection)
-//                              {
-//   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "HTTP Request : %s
-//   %s",
-//                   request.method.c_str(), request.destination.c_str());
 
-//   bool failure = true;
-//   std::string responseBody;
-//   std::map<std::string, std::string> headers = {{"Content-Type",
-//   "text/json"}};
+kj::Promise<void>
+SessionServer::Handler::releasePipeline(ReleasePipelineContext context) {
+  std::string uuid = context.getParams().getUuid();
 
-//   if (request.method == "POST") {
-//     if (request.destination == "/shutdown") {
-//       NeonMIR::getInstance()->Shutdown();
-//       return;
-//     } else if (request.destination == "/newSession") {
-//       std::shared_ptr<AudioSession> newSession;
-//       bool collision = false;
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
 
-//       std::string payload;
-//       connection->read(
-//           [&payload](SessionServerServer::connection::input_range chunk,
-//                      std::error_code ec, std::size_t bytes_transferred,
-//                      SessionServerServer::connection_ptr connection) {
-//             for (auto &c : chunk)
-//               payload += c;
-//           });
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(uuid));
+    if (it == AudioSession::activeSessions.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "Unknown Pipeline UUID [%s]", uuid.c_str());
+    } else {
+      instance->logger.WriteLog(
+          DebugLogger::DebugLevel::DEBUG_WARNING,
+          "NOT IMPLEMENTED ==> Destroying Pipeline UUID [%s]", uuid.c_str());
+    }
+  }
 
-//       usleep(500 * 1000);
+  return kj::READY_NOW;
+}
 
-//       {
-//         std::scoped_lock<std::mutex>
-//         lock(AudioSession::activeSessionMutex); do {
-//           newSession =
-//               std::make_shared<AudioSession>(payload.c_str(),
-//               payload.length());
-//           auto it = AudioSession::activeSessions.find(newSession->uuid);
-//           if (it != AudioSession::activeSessions.end()) {
-//             logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-//                             "activeSession UUID collision [%s]",
-//                             boost::uuids::to_string(newSession->uuid).c_str());
-//             collision = true;
-//           }
-//         } while (collision);
-//         AudioSession::activeSessions[newSession->uuid] = newSession;
-//       }
+kj::Promise<void>
+SessionServer::Handler::createBPMPipeLine(CreateBPMPipeLineContext context) {
+  std::string audioSessionUUID = context.getParams().getUuid();
 
-//       connection->set_status(SessionServerServer::connection::ok);
-//       failure = false;
-//       headers["SessionID"] = boost::uuids::to_string(newSession->uuid);
+  boost::uuids::uuid essentiaSessionUUID;
+  std::shared_ptr<NeonEssentiaSession> newSession;
 
-//     } else if (request.destination == "/releaseSession") {
-//       std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
-//       failure = false;
-//       //   auto headers = request.headers;
-//       //   std::string uuidHeader;
-//       //   auto neonSessionHdr = request.headers;
-//       //   neonSessionHdr.get<NeonSessionHeader>()->parse(uuidHeader);
+  bool collision = false;
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activePipelinesMutex);
 
-//       //   boost::uuids::string_generator uuidGenerator;
-//       //   boost::uuids::uuid targetUUID = uuidGenerator(uuidHeader);
-//       //   auto it = AudioSession::activeSessions.find(targetUUID);
-//       //   if (it != AudioSession::activeSessions.end()) {
-//       //     AudioSession::activeSessions.erase(targetUUID);
-//       //     response.send(Http::Code::Ok, "");
-//       //   } else {
-//       //     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-//       //                     "Unable to find audio session [%s] to delete",
-//       //                     uuidHeader.c_str());
-//       //     response.send(Http::Code::Not_Found, "");
-//       //   }
-//     }
-//   }
+    do {
+      essentiaSessionUUID = boost::uuids::random_generator()();
+      auto it = AudioSession::activePipelines.find(essentiaSessionUUID);
+      if (it != AudioSession::activePipelines.end()) {
+        instance->logger.WriteLog(
+            DebugLogger::DebugLevel::DEBUG_WARNING,
+            "activePipelines UUID collision [%s]",
+            boost::uuids::to_string(essentiaSessionUUID).c_str());
+        collision = true;
+      }
+    } while (collision);
 
-//   if (failure) {
-//     connection->set_status(SessionServerServer::connection::bad_request);
-//     responseBody = "Invalid Request";
-//   }
+    std::string uuidString = boost::uuids::to_string(essentiaSessionUUID);
+    newSession =
+        std::make_shared<NeonEssentiaSession>(audioSessionUUID, uuidString);
+    AudioSession::activePipelines[essentiaSessionUUID] = newSession;
+    context.getResults().setUuid(uuidString);
+  }
 
-//   headers["Content-Length"] = std::to_string(responseBody.length());
-//   connection->set_headers(headers);
-//   connection->write(responseBody);
-// }
+  return kj::READY_NOW;
+}
+
+kj::Promise<void>
+SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
+  std::string bpmUUID = context.getParams().getUuid();
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activePipelinesMutex);
+
+    auto it = AudioSession::activePipelines.find(
+        boost::uuids::string_generator()(bpmUUID));
+    if (it == AudioSession::activePipelines.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "Unknown Pipeline UUID [%s]", bpmUUID.c_str());
+    } else {
+      essentia::Real bpm;
+      essentia::Real confidence;
+      it->second->runBPMPipeline(&bpm, &confidence);
+      auto result = context.getResults().initResult();
+      result.setBpm(bpm);
+      result.setConfidence(bpm);
+      context.getResults().setResult(result);
+    }
+  }
+
+  return kj::READY_NOW;
+}

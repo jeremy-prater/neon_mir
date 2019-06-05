@@ -3,6 +3,7 @@
 #include "debuglogger.hpp"
 #include "neon.session.capnp.h"
 #include <ZMQOutputStream.hpp>
+#include <condition_variable>
 #include <fstream>
 #include <iostream>
 #include <kj/array.h>
@@ -31,9 +32,6 @@ public:
   [[nodiscard]] const uint32_t getDurationMs() const noexcept;
 
 private:
-  mutable capnp::EzRpcClient client;
-  mutable neon::session::Controller::Client controllerServer;
-  kj::WaitScope &waitScope;
   const std::string handle;
   std::string sessionUUID;
 
@@ -42,5 +40,15 @@ private:
   const uint8_t defaultWidth;
   const uint32_t defaultDurationMs;
 
+  mutable std::mutex audioQueueMutex;
+  mutable std::vector<std::vector<capnp::byte>> audioQueue;
+
+  bool audioProcessorThreadRunning;
+  std::thread audioProcessorThread;
+  std::mutex audioProcessorWakeupMutex;
+  mutable std::condition_variable audioProcessorWakeup;
+
   DebugLogger logger;
+
+  void audioProcessorLoop();
 };

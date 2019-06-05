@@ -1,13 +1,13 @@
 #include "essentia-session.hpp"
-#include <essentia/algorithmfactory.h>
-#include <essentia/essentia.h>
-#include <essentia/scheduler/network.h>
-#include <essentia/streaming/algorithms/poolstorage.h>
+#include "audio-session.hpp"
+#include "boost/uuid/string_generator.hpp"
 
-NeonEssentiaSession::NeonEssentiaSession(const std::string sessID)
-    : logger("EssentiaSession-" + sessID,
-             DebugLogger::DebugColor::COLOR_MAGENTA, false),
-      sessionID(sessID) {
+NeonEssentiaSession::NeonEssentiaSession(const std::string audioSessID,
+                                         const std::string sessID)
+    : audioSessionID(audioSessID), sessionID(sessID),
+      algorithmFactory(essentia::streaming::AlgorithmFactory::instance()),
+      logger("EssentiaSession-" + sessionID,
+             DebugLogger::DebugColor::COLOR_MAGENTA, false) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created Session");
 }
 
@@ -20,49 +20,76 @@ NeonEssentiaSession::~NeonEssentiaSession() {
   return sessionID;
 }
 
-void NeonEssentiaSession::defaultConfig(uint32_t newSampleRate,
-                                        uint8_t newChannels, uint8_t newWidth,
-                                        double newDuration) {
+void NeonEssentiaSession::updateAudioDataFromBuffer() noexcept {
+  auto it = AudioSession::activeSessions.find(
+      boost::uuids::string_generator()(audioSessionID));
+
+  if (it == AudioSession::activeSessions.end()) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                    "Unknown Session UUID [%s]", audioSessionID.c_str());
+  } else {
+    std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
+
+    auto circlarBuffer = it->second->getAudioSink();
+    for (auto value : *circlarBuffer)
+      audioVectorData.push_back(value);
+
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "sizes [%d][%d]",
+                    circlarBuffer->size(), audioVectorData.size());
+  }
+}
+
+void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
+                                            uint8_t newChannels,
+                                            uint8_t newWidth,
+                                            double newDuration) {
   int frameSize = 2048;
   int hopSize = 1024;
 
-  essentia::Pool pool;
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Creating BPM Pipeline");
 
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Creating Algorithms");
+  audioVectorInput =
+      new essentia::streaming::VectorInput<essentia::Real>(&audioVectorData);
 
-  essentia::streaming::AlgorithmFactory &factory =
-      essentia::streaming::AlgorithmFactory::instance();
+  auto rhythmExtractor =
+      algorithmFactory.create("rhythmExtractor2013", "method", "multifeature");
 
-  Algorithm *audio = factory.create(
-      "MonoLoader", "filename",
-      "/home/prater/src/neon_mir/samples/midnight-drive-clip-10s.wav",
-      "sampleRate", newSampleRate);
-
-  Algorithm *rhythmextractor =
-      factory.create("RhythmExtractor2013", "method", "multifeature");
+  {
+    std::scoped_lock<std::mutex> lock(algorithmMapMutex);
+    algorithmMap["audioVectorInput"] = audioVectorInput;
+    algorithmMap["rhythmExtractor"] = rhythmExtractor;
+  }
 
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Connecting Algorithms");
 
-  audio->output("audio") >> rhythmextractor->input("signal");
+  essentia::streaming::connect(*audioVectorInput,
+                               rhythmExtractor->input("signal"));
 
-  rhythmextractor->output("ticks") >>
+  rhythmExtractor->output("ticks") >>
       essentia::streaming::PoolConnector(pool, "rhythm.ticks");
-  rhythmextractor->output("confidence") >>
+  rhythmExtractor->output("confidence") >>
       essentia::streaming::PoolConnector(pool, "rhythm.ticks_confidence");
-  rhythmextractor->output("bpm") >>
+  rhythmExtractor->output("bpm") >>
       essentia::streaming::PoolConnector(pool, "rhythm.bpm");
-  rhythmextractor->output("estimates") >>
+  rhythmExtractor->output("estimates") >>
       essentia::streaming::PoolConnector(pool, "rhythm.estimates");
-  rhythmextractor->output("bpmIntervals") >>
+  rhythmExtractor->output("bpmIntervals") >>
       essentia::streaming::PoolConnector(pool, "rhythm.bpmIntervals");
 
+  audioNetwork = new essentia::scheduler::Network(audioVectorInput);
+}
+
+void NeonEssentiaSession::runBPMPipeline(essentia::Real *bpm,
+                                         essentia::Real *confidence) {
+  if (!audioVectorData.size() < 4096)
+    return;
+
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Running Algorithms");
+  audioNetwork->run();
 
-  essentia::scheduler::Network network(audio);
-  network.run();
+  *bpm = pool.value<essentia::Real>("rhythm.bpm"),
+  *confidence = pool.value<essentia::Real>("rhythm.ticks_confidence") / 0.0532;
 
-  logger.WriteLog(
-      DebugLogger::DebugLevel::DEBUG_INFO, "Results : BPM [%f] Confidence [%f%%]",
-      pool.value<essentia::Real>("rhythm.bpm"),
-      pool.value<essentia::Real>("rhythm.ticks_confidence") / 0.0532);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Results : BPM [%f] Confidence [%f%%]", bpm, confidence);
 }

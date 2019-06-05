@@ -9,21 +9,20 @@ std::unordered_map<boost::uuids::uuid, std::shared_ptr<AudioSession>,
                    boost::hash<boost::uuids::uuid>>
     AudioSession::activeSessions;
 
-AudioSession::AudioSession()
-    : uuid(boost::uuids::random_generator()()),
-      essentiaSession(boost::uuids::to_string(uuid)),
-      logger("AudioSession-" + boost::uuids::to_string(uuid),
-             DebugLogger::DebugColor::COLOR_BLUE, true),
-      sampleRate(0), channels(0), width(0), duration(0) {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                  "Creating Session from bytes of audio data!");
+std::mutex AudioSession::activePipelinesMutex;
+std::unordered_map<boost::uuids::uuid, std::shared_ptr<NeonEssentiaSession>,
+                   boost::hash<boost::uuids::uuid>>
+    AudioSession::activePipelines;
 
-  // audioData = static_cast<uint8_t *>(malloc(size));
-  // memcpy(audioData, data, size);
+AudioSession::AudioSession(const boost::uuids::uuid newUUID)
+    : uuid(newUUID), sampleRate(0), channels(0), width(0), duration(0),
+      logger("AudioSession-" + boost::uuids::to_string(uuid),
+             DebugLogger::DebugColor::COLOR_BLUE, true) {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Creating Audio Session");
 }
 
 AudioSession::~AudioSession() {
-  // free(audioData);
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Destoryed Session!");
 }
 
@@ -56,7 +55,7 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   audioData = boost::circular_buffer<uint8_t>(bytes);
 
   // TODO: Extract this into something else later for dynamic pipelines
-  essentiaSession.defaultConfig(sampleRate, channels, width, duration);
+  // essentiaSession.createBPMPipeline(sampleRate, channels, width, duration);
 }
 
 boost::circular_buffer<uint8_t> *AudioSession::getAudioSink() {

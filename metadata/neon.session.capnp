@@ -17,10 +17,20 @@ struct SessionAudioPacket {
     segment @1 :Data;
 }
 
+struct BPMResult {
+    bpm        @0  :Float32;
+    confidence @1  :Float32;
+}
+
 interface Controller {
     createSession        @0 (name :Text) -> (uuid :Text);
     releaseSession       @1 (uuid :Text);
     shutdown             @2 ();
     updateSessionConfig  @3 (config :SessionConfig);
     pushAudioData        @4 (data :SessionAudioPacket);
+
+    releasePipeline      @5 (uuid: Text);
+
+    createBPMPipeLine    @6 (uuid :Text) -> (uuid: Text);
+    getBPMPipeLineData   @7 (uuid :Text) -> (result :BPMResult);
 }
