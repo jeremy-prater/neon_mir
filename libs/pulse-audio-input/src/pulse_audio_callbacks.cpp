@@ -123,6 +123,40 @@ void NeonPulseInput::successCallback(pa_context *context, int success,
 
 void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
                                        void *userdata) {
-  instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                            "client audio [%d bytes]", nbytes);
+  const void *audioData;
+  size_t audioDataSize;
+  int peekResult = pa_stream_peek(p, &audioData, &audioDataSize);
+
+  if (peekResult) {
+    instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                              "Failed to peek into PCM stream [%d]",
+                              peekResult);
+    return;
+  }
+
+  if (!audioData) {
+    // Could be empty or hole...
+    if (audioDataSize) {
+      // This is a hole.
+      // We need to drop audioDataSize
+      pa_stream_drop(p);
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "client audio dropping [%d bytes]",
+                                audioDataSize);
+    } else {
+      // Buffer is just empty
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "client audio buffer empty");
+    }
+  } else if (audioDataSize) {
+    // We actually have audio data!
+    // We'll just assume int16_t for now...
+    instance->newData(audioData, audioDataSize);
+    pa_stream_drop(p);
+  } else {
+    instance->logger.WriteLog(
+        DebugLogger::DebugLevel::DEBUG_WARNING,
+        "client audio unknown state! [buffer : %p] [size : %d]", audioData,
+        audioDataSize);
+  }
 }

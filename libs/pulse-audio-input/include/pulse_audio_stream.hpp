@@ -1,6 +1,7 @@
 #pragma once
 
 #include "debuglogger.hpp"
+#include <boost/signals2.hpp>
 #include <pulse/pulseaudio.h>
 #include <stdint.h>
 #include <unordered_map>
@@ -16,6 +17,8 @@ public:
   void CreateStream(const uint8_t channels, const uint32_t rate,
                     const pa_sample_format_t format);
   void DestroyStream();
+
+  boost::signals2::signal<void(const void *data, const size_t size)> newData;
 
 private:
   void Lock();
