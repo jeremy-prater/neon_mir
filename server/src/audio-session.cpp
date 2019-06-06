@@ -2,6 +2,7 @@
 #include "memory.h"
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <essentia/streaming/algorithms/ringbufferinput.h>
 #include <stdlib.h>
 
 std::mutex AudioSession::activeSessionMutex;
@@ -16,8 +17,8 @@ std::unordered_map<boost::uuids::uuid, std::shared_ptr<NeonEssentiaSession>,
 
 AudioSession::AudioSession(const boost::uuids::uuid newUUID)
     : uuid(newUUID), sampleRate(0), channels(0), width(0), duration(0),
-      logger("AudioSession-" + boost::uuids::to_string(uuid),
-             DebugLogger::DebugColor::COLOR_BLUE, true) {
+      frameSize(0), logger("AudioSession-" + boost::uuids::to_string(uuid),
+                           DebugLogger::DebugColor::COLOR_BLUE, true) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "Creating Audio Session");
 }
@@ -43,19 +44,29 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   channels = newChannels;
   width = newWidth;
   duration = newDuration / 1000;
+
   logger.WriteLog(
       DebugLogger::DebugLevel::DEBUG_STATUS,
       "Updating Config : SR [%d] Width [%d] Channels [%d] Duration [%f]",
       sampleRate, width, channels, duration);
 
-  size_t bytes = channels * (width / 8) * sampleRate * duration;
+  frameSize = channels * (width / 8) * sampleRate * duration;
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                  "Allocating [%d] bytes", bytes);
+                  "Allocating [%d] bytes", frameSize);
 
-  audioData = boost::circular_buffer<uint8_t>(bytes);
+  // essentia::streaming::AlgorithmFactory::Registrar<
+  //     essentia::streaming::RingBufferInput>
+  //     regRingBufferInput;
+  // audioData = dynamic_cast<essentia::streaming::RingBufferInput *>(
+  //     essentia::streaming::AlgorithmFactory::instance().create(
+  //         "RingBufferInput", "bufferSize", frameSize));
+  essentia::ParameterMap pars;
+  pars.add("bufferSize", frameSize);
 
-  // TODO: Extract this into something else later for dynamic pipelines
-  // essentiaSession.createBPMPipeline(sampleRate, channels, width, duration);
+  audioData = new essentia::streaming::RingBufferInput();
+  audioData->declareParameters();
+  audioData->setParameters(pars);
+  audioData->configure();
 }
 
 const uint32_t AudioSession::getSampleRate() const noexcept {
@@ -64,7 +75,8 @@ const uint32_t AudioSession::getSampleRate() const noexcept {
 const uint8_t AudioSession::getChannels() const noexcept { return channels; }
 const uint8_t AudioSession::getWidth() const noexcept { return width; }
 const double AudioSession::getDuration() const noexcept { return duration; }
+const uint32_t AudioSession::getFrameSize() const noexcept { return frameSize; }
 
-boost::circular_buffer<uint8_t> *AudioSession::getAudioSink() {
-  return &audioData;
+essentia::streaming::RingBufferInput *AudioSession::getAudioSink() {
+  return audioData;
 }

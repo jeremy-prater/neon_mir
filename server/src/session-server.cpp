@@ -159,6 +159,8 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
   //                           "pushAudioData to [%s] [%d] bytes", uuid.c_str(),
   //                           newAudio.size());
 
+  std::shared_ptr<AudioSession> output;
+
   {
     std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
 
@@ -168,19 +170,15 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
       instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                                 "Unknown Session UUID [%s]", uuid.c_str());
     } else {
-      std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
-      // Transform data...??
-      auto output = it->second->getAudioSink();
-
-      // Optimize this later!!
-      for (auto audioByte : newAudio)
-        output->push_back(audioByte);
-
-      // instance->logger.WriteLog(
-      //     DebugLogger::DebugLevel::DEBUG_STATUS,
-      //     "pushAudioData - circular buffer size [%s] [%d]", uuid.c_str(),
-      //     output->size());
+      output = it->second;
     }
+  }
+
+  if (output) {
+    std::scoped_lock<std::mutex> lock(output->audioSinkMutex);
+    essentia::Real *dataStart = (essentia::Real *)&newAudio.front();
+    ssize_t dataSize = newAudio.size() / (output->getWidth() / 8);
+    output->getAudioSink()->add(dataStart, dataSize);
   }
 
   return kj::READY_NOW;
@@ -238,6 +236,11 @@ SessionServer::Handler::createBPMPipeLine(CreateBPMPipeLineContext context) {
     context.getResults().setUuid(uuidString);
   }
 
+  uint32_t sampleRate = 0;
+  uint8_t channels = 0;
+  uint8_t width = 0;
+  double duration = 0;
+
   {
     std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
     auto it = AudioSession::activeSessions.find(
@@ -248,11 +251,15 @@ SessionServer::Handler::createBPMPipeLine(CreateBPMPipeLineContext context) {
                                 audioSessionUUID.c_str());
     } else {
       auto audioSession = it->second;
-      newSession->createBPMPipeline(
-          audioSession->getSampleRate(), audioSession->getChannels(),
-          audioSession->getWidth(), audioSession->getDuration());
+      sampleRate = audioSession->getSampleRate();
+      channels = audioSession->getChannels();
+      width = audioSession->getWidth();
+      duration = audioSession->getDuration();
     }
   }
+
+  if (sampleRate)
+    newSession->createBPMPipeline(sampleRate, channels, width, duration);
 
   return kj::READY_NOW;
 }
@@ -260,6 +267,8 @@ SessionServer::Handler::createBPMPipeLine(CreateBPMPipeLineContext context) {
 kj::Promise<void>
 SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
   std::string bpmUUID = context.getParams().getUuid();
+
+  std::shared_ptr<NeonEssentiaSession> pipeline = nullptr;
   {
     std::scoped_lock<std::mutex> lock(AudioSession::activePipelinesMutex);
 
@@ -269,18 +278,20 @@ SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
       instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                                 "Unknown Pipeline UUID [%s]", bpmUUID.c_str());
     } else {
-      essentia::Real bpm;
-      essentia::Real confidence;
-      it->second->runBPMPipeline(&bpm, &confidence);
-      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "Results : BPM [%f] Confidence [%f%%]", bpm, confidence);
-
-      auto result = context.getResults().initResult();
-      result.setBpm(bpm);
-      result.setConfidence(bpm);
-      context.getResults().setResult(result);
+      pipeline = it->second;
     }
   }
 
+  if (pipeline.operator bool()) {
+    essentia::Real bpm;
+    essentia::Real confidence;
+
+    pipeline->getBPMPipeline(&bpm, &confidence);
+
+    auto result = context.getResults().initResult();
+    result.setBpm(bpm);
+    result.setConfidence(confidence);
+    context.getResults().setResult(result);
+  }
   return kj::READY_NOW;
 }

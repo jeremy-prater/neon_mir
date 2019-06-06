@@ -62,6 +62,7 @@ void AudioProcessor::audioProcessorLoop() {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                     "Created BPM Pipeline [%s]", bpmUUID.c_str());
   }
+  int count = 0;
 
   while (audioProcessorThreadRunning) {
     // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -103,8 +104,10 @@ void AudioProcessor::audioProcessorLoop() {
       audioQueue.clear();
     }
 
+    count++;
+
     // Get new BPM...
-    {
+    if (count > 10) {
       auto request = controllerServer.getBPMPipeLineDataRequest();
       request.setUuid(bpmUUID);
       auto promise = request.send();
@@ -136,8 +139,8 @@ void AudioProcessor::audioProcessorLoop() {
 
 void AudioProcessor::processAudio(const capnp::byte *musicData,
                                   const size_t musicDataLength) const noexcept {
-  //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-  //   "Processing Chunk [%d] ", musicDataLength);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Processing Chunk [%d] ",
+                  musicDataLength);
   {
     std::scoped_lock<std::mutex> lock(audioQueueMutex);
     audioQueue.push_back(

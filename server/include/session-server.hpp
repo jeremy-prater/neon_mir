@@ -25,11 +25,11 @@ public:
     virtual ::kj::Promise<void>
     pushAudioData(PushAudioDataContext context) override;
 
-    virtual kj::Promise<void>
+    virtual ::kj::Promise<void>
     releasePipeline(ReleasePipelineContext context) override;
-    virtual kj::Promise<void>
+    virtual ::kj::Promise<void>
     createBPMPipeLine(CreateBPMPipeLineContext context) override;
-    virtual kj::Promise<void>
+    virtual ::kj::Promise<void>
     getBPMPipeLineData(GetBPMPipeLineDataContext context) override;
 
   private:

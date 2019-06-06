@@ -3,9 +3,9 @@
 #include "debuglogger.hpp"
 #include "essentia-session.hpp"
 #include "neon.session.capnp.h"
-#include <boost/circular_buffer.hpp>
 #include <boost/functional/hash.hpp>
 #include <boost/uuid/uuid.hpp>
+#include <essentia/streaming/algorithms/ringbufferinput.h>
 #include <memory>
 #include <unordered_map>
 
@@ -35,18 +35,20 @@ public:
   const uint8_t getChannels() const noexcept;
   const uint8_t getWidth() const noexcept;
   const double getDuration() const noexcept;
+  const uint32_t getFrameSize() const noexcept;
 
   // push raw audio data into the pipeline
   std::mutex audioSinkMutex;
-  boost::circular_buffer<uint8_t> *getAudioSink();
+  essentia::streaming::RingBufferInput *getAudioSink();
 
 private:
-  boost::circular_buffer<uint8_t> audioData;
+  essentia::streaming::RingBufferInput *audioData;
 
   uint32_t sampleRate;
   uint8_t channels;
   uint8_t width;
   double duration;
+  uint32_t frameSize;
 
   DebugLogger logger;
 };

@@ -1,7 +1,6 @@
 #include "capnp/ez-rpc.h"
 #include "capnp/serialize.h"
 #include "neon.session.capnp.h"
-#include <ZMQOutputStream.hpp>
 #include <fstream>
 #include <iostream>
 #include <kj/array.h>

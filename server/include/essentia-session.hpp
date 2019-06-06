@@ -7,6 +7,7 @@
 #include <essentia/streaming/algorithms/poolstorage.h>
 #include <essentia/streaming/algorithms/vectorinput.h>
 #include <unordered_map>
+#include <thread>
 
 class NeonEssentiaSession {
 public:
@@ -18,14 +19,12 @@ public:
   void createBPMPipeline(uint32_t newSampleRate, uint8_t newChannels,
                          uint8_t newWidth, double newDuration);
 
-  void runBPMPipeline(essentia::Real *bpm, essentia::Real *confidence);
+  void getBPMPipeline(essentia::Real *bpm, essentia::Real *confidence);
 
 private:
   const std::string audioSessionID;
   const std::string sessionID;
 
-  std::vector<essentia::Real> audioVectorData;
-  essentia::streaming::VectorInput<essentia::Real> *audioVectorInput;
   essentia::streaming::AlgorithmFactory &algorithmFactory;
   essentia::scheduler::Network *audioNetwork;
   essentia::Pool pool;
@@ -33,6 +32,9 @@ private:
   std::mutex algorithmMapMutex;
   std::unordered_map<std::string, essentia::streaming::Algorithm *>
       algorithmMap;
+
+  bool shutdown;
+  std::vector<std::thread*> threadPool;
 
   DebugLogger logger;
 

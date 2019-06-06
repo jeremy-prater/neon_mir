@@ -2,7 +2,6 @@
 #include "capnp/serialize.h"
 #include "debuglogger.hpp"
 #include "neon.session.capnp.h"
-#include <ZMQOutputStream.hpp>
 #include <condition_variable>
 #include <fstream>
 #include <iostream>

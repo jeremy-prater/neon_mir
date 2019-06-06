@@ -21,7 +21,7 @@ int main() {
       boost::bind(&AudioProcessor::processAudio, &audioProcessor, _1, _2));
 
   paInput.CreateStream(audioProcessor.getChannels(),
-                       audioProcessor.getSampleRate(), PA_SAMPLE_S16LE);
+                       audioProcessor.getSampleRate(), PA_SAMPLE_FLOAT32LE);
 
   boost::asio::signal_set signals(io_service, SIGINT, SIGTERM);
   signals.async_wait([&dataConnection](const boost::system::error_code &error,
