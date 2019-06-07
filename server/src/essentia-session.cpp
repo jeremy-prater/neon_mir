@@ -81,9 +81,11 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
                     "Starting BPM Worker thread");
 
     while (!shutdown) {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                      "BPM Worker thread step-start");
       audioNetwork->run();
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "BPM Worker thread step");
+                      "BPM Worker thread step-end");
     }
 
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
