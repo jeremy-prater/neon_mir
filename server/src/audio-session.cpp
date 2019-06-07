@@ -54,19 +54,19 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
                   "Allocating [%d] bytes", frameSize);
 
+  // essentia::ParameterMap pars;
   // pars.add("bufferSize", frameSize);
-
   // audioData = new essentia::streaming::RingBufferInput();
   // audioData->declareParameters();
   // audioData->setParameters(pars);
   // audioData->configure();
+
   essentia::streaming::AlgorithmFactory::Registrar<
       essentia::streaming::RingBufferInput>
       regRingBufferInput;
   audioData = dynamic_cast<essentia::streaming::RingBufferInput *>(
       essentia::streaming::AlgorithmFactory::instance().create(
           "RingBufferInput", "bufferSize", frameSize));
-  essentia::ParameterMap pars;
 }
 
 const uint32_t AudioSession::getSampleRate() const noexcept {

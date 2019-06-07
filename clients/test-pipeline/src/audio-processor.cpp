@@ -104,10 +104,7 @@ void AudioProcessor::audioProcessorLoop() {
       audioQueue.clear();
     }
 
-    count++;
-
-    // Get new BPM...
-    if (count > 10) {
+    {
       auto request = controllerServer.getBPMPipeLineDataRequest();
       request.setUuid(bpmUUID);
       auto promise = request.send();
