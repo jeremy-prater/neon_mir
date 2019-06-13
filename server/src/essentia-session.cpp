@@ -63,6 +63,9 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
     }
   }
 
+  rhythmExtractor->input("signal").setAcquireSize(newChannels * (newWidth / 8) *
+                                                  newSampleRate * newDuration);
+
   rhythmExtractor->output("ticks") >>
       essentia::streaming::PoolConnector(pool, "rhythm.ticks");
   rhythmExtractor->output("confidence") >>
@@ -76,16 +79,19 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
 
   audioNetwork = new essentia::scheduler::Network(root);
 
-  threadPool.push_back(new std::thread([this]() {
+  threadPool.push_back(new std::thread([this, root, rhythmExtractor]() {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                     "Starting BPM Worker thread");
 
     while (!shutdown) {
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                       "BPM Worker thread step-start");
+      root->shouldStop(false);
+      rhythmExtractor->reset();
       audioNetwork->run();
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                       "BPM Worker thread step-end");
+      usleep(25 * 1000);
     }
 
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,

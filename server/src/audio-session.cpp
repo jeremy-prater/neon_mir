@@ -2,7 +2,6 @@
 #include "memory.h"
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
-#include <essentia/streaming/algorithms/ringbufferinput.h>
 #include <stdlib.h>
 
 std::mutex AudioSession::activeSessionMutex;
@@ -62,11 +61,11 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
   // audioData->configure();
 
   essentia::streaming::AlgorithmFactory::Registrar<
-      essentia::streaming::RingBufferInput>
+      essentia::streaming::BoostRingBufferInput>
       regRingBufferInput;
-  audioData = dynamic_cast<essentia::streaming::RingBufferInput *>(
+  audioData = dynamic_cast<essentia::streaming::BoostRingBufferInput *>(
       essentia::streaming::AlgorithmFactory::instance().create(
-          "RingBufferInput", "bufferSize", frameSize));
+          "BoostRingBufferInput", "bufferSize", frameSize));
 }
 
 const uint32_t AudioSession::getSampleRate() const noexcept {
@@ -77,6 +76,6 @@ const uint8_t AudioSession::getWidth() const noexcept { return width; }
 const double AudioSession::getDuration() const noexcept { return duration; }
 const uint32_t AudioSession::getFrameSize() const noexcept { return frameSize; }
 
-essentia::streaming::RingBufferInput *AudioSession::getAudioSink() {
+essentia::streaming::BoostRingBufferInput *AudioSession::getAudioSink() {
   return audioData;
 }

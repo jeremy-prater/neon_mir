@@ -5,7 +5,7 @@
 #include "neon.session.capnp.h"
 #include <boost/functional/hash.hpp>
 #include <boost/uuid/uuid.hpp>
-#include <essentia/streaming/algorithms/ringbufferinput.h>
+#include <essentia/streaming/algorithms/boostbuffer.h>
 #include <memory>
 #include <unordered_map>
 
@@ -39,10 +39,10 @@ public:
 
   // push raw audio data into the pipeline
   std::mutex audioSinkMutex;
-  essentia::streaming::RingBufferInput *getAudioSink();
+  essentia::streaming::BoostRingBufferInput *getAudioSink();
 
 private:
-  essentia::streaming::RingBufferInput *audioData;
+  essentia::streaming::BoostRingBufferInput *audioData;
 
   uint32_t sampleRate;
   uint8_t channels;
