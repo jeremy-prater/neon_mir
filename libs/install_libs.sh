@@ -10,7 +10,7 @@ do
     pushd ${lib}
         
         # TODO : Once stable, stop trashing builds
-        #rm -rf build
+        rm -rf build
 
         mkdir -p build
         cd build

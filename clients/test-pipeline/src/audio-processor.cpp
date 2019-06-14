@@ -42,13 +42,11 @@ void AudioProcessor::audioProcessorLoop() {
 
   {
     auto request = controllerServer.updateSessionConfigRequest();
-    auto config = controllerServer.updateSessionConfigRequest().initConfig();
-    config.setUuid(sessionUUID);
-    config.setSampleRate(defaultSampleRate);
-    config.setChannels(defaultChannels);
-    config.setWidth(defaultWidth);
-    config.setDuration(defaultDurationMs);
-    request.setConfig(config);
+    request.getConfig().setUuid(sessionUUID);
+    request.getConfig().setSampleRate(defaultSampleRate);
+    request.getConfig().setChannels(defaultChannels);
+    request.getConfig().setWidth(defaultWidth);
+    request.getConfig().setDuration(defaultDurationMs);
     auto promise = request.send();
     auto response = promise.wait(waitScope);
   }
@@ -85,12 +83,10 @@ void AudioProcessor::audioProcessorLoop() {
         while (bytesLeft) {
           size_t sendSize = std::min(4096, static_cast<int>(bytesLeft));
           auto request = controllerServer.pushAudioDataRequest();
-          auto builder = controllerServer.pushAudioDataRequest().initData();
-          builder.setUuid(sessionUUID);
+          request.getData().setUuid(sessionUUID);
           kj::ArrayPtr<const float> arrayPtr(audioChunkStart + offset,
                                              sendSize);
-          builder.setSegment(arrayPtr);
-          request.setData(builder);
+          request.getData().setSegment(arrayPtr);
 
           offset += sendSize;
           bytesLeft -= sendSize;
