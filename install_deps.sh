@@ -3,7 +3,9 @@
 OSVER=`uname -a`
 
 ARCHDEPS="libyaml ffmpeg-compat-57 libavresample python libsamplerate taglib qt4 \
-          chromaprint-fftw python-six vamp-plugin-sdk intel-tbb zeromq capnproto"
+          chromaprint-fftw python-six vamp-plugin-sdk intel-tbb zeromq capnproto \
+          magnum-examples-git magnum-extras-git magnum-git magnum-integration-git \
+          magnum-plugins-git"
 
 UBUNTUDEPS="libyaml-dev ffmpeg libavresample-dev qt4-default python libsamplerate0 \
             libsamplerate0-dev libtag-extras-dev libchromaprint1 libchromaprint-dev \
