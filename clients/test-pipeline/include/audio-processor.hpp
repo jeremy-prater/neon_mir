@@ -22,7 +22,7 @@ public:
   AudioProcessor();
   ~AudioProcessor();
 
-  void processAudio(const capnp::byte *musicData,
+  void processAudio(const float *musicData,
                     const size_t musicDataLength) const noexcept;
 
   [[nodiscard]] const uint32_t getSampleRate() const noexcept;
@@ -40,7 +40,7 @@ private:
   const uint32_t defaultDurationMs;
 
   mutable std::mutex audioQueueMutex;
-  mutable std::vector<std::vector<capnp::byte>> audioQueue;
+  mutable std::vector<std::vector<float>> audioQueue;
 
   bool audioProcessorThreadRunning;
   std::thread audioProcessorThread;

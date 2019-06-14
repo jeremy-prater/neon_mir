@@ -34,14 +34,13 @@ const char *BoostRingBufferInput::description = DOC(
     "is fed into the essentia streaming mode.");
 
 BoostRingBufferInput::BoostRingBufferInput()
-    : buffer(nullptr), frameSize(4096) {
+    : buffer(nullptr), frameSize(44100) {
   declareOutput(_outputAudio, frameSize, "signal",
                 "data from the boost circular buffer");
 
-  buffer = new boost::circular_buffer<essentia::Real>(frameSize);
-
   _outputAudio.setBufferType(BufferUsage::forAudioStream);
 
+  buffer = new boost::circular_buffer<essentia::Real>(frameSize);
   output("signal").setAcquireSize(frameSize);
   output("signal").setReleaseSize(frameSize);
 }
@@ -51,33 +50,35 @@ BoostRingBufferInput::~BoostRingBufferInput() {
     delete buffer;
 }
 
+void BoostRingBufferInput::declareParameters() {
+  declareParameter("bufferSize", "the size of the ringbuffer", "", 44100);
+}
+
 void BoostRingBufferInput::configure() {
   if (buffer)
     delete buffer;
+
+  frameSize = parameter("bufferSize").toInt();
+
+  // std::cout << "configure() : frameSize : " << frameSize << std::endl;
+
   buffer = new boost::circular_buffer<essentia::Real>(frameSize);
 
   output("signal").setAcquireSize(frameSize);
   output("signal").setReleaseSize(frameSize);
 }
 
-void BoostRingBufferInput::add(Real *inputData, int size) {
-  std::lock_guard<std::mutex> lock(bufferMutex);
-  for (int index = 0; index < size; index++) {
-    buffer->push_back(inputData[index]);
-  }
-}
-
 AlgorithmStatus BoostRingBufferInput::process() {
 
-  std::cout << "process()" << std::endl;
+  /// std::cout << "process()" << std::endl;
   AlgorithmStatus status = acquireData();
 
-  std::cout << "status : " << status << std::endl;
+  /// std::cout << "status : " << status << std::endl;
 
   int frameOutSize = _outputAudio.acquireSize();
 
-  std::cout << "data acquired : frameOutSize : " << frameOutSize
-            << " ==> frameSize : " << frameSize << std::endl;
+  /// std::cout << "data acquired : frameOutSize : " << frameOutSize
+  /// << " ==> frameSize : " << frameSize << std::endl;
 
   if (status != OK) {
     return status;
@@ -88,7 +89,7 @@ AlgorithmStatus BoostRingBufferInput::process() {
   Real *dataStart = output.data();
 
   {
-    std::cout << "lock(bufferMutex)" << std::endl;
+    /// std::cout << "lock(bufferMutex)" << std::endl;
 
     std::lock_guard<std::mutex> lock(bufferMutex);
     // std::pair<essentia::Real *, std::size_t>
@@ -97,21 +98,21 @@ AlgorithmStatus BoostRingBufferInput::process() {
     auto array_two = buffer->array_two();
 
     if (array_one.second + array_two.second != frameOutSize) {
-      std::cout << "PASS" << std::endl;
-
+      /// std::cout << "PASS" << std::endl;
+      _shouldStop = true;
       return PASS;
     }
 
-    std::cout << "memcpy : a0 : " << array_one.second
-              << " : a1 : " << array_two.second << std::endl;
+    /// std::cout << "memcpy : a0 : " << array_one.second
+    /// << " : a1 : " << array_two.second << std::endl;
 
     memcpy(dataStart, array_one.first, array_one.second);
     memcpy(dataStart + array_one.second, array_two.first, array_two.second);
   }
 
-  std::cout << "releasing" << std::endl;
+  /// std::cout << "releasing" << std::endl;
   releaseData();
-  std::cout << "released" << std::endl;
+  /// std::cout << "released" << std::endl;
 
   _shouldStop = true;
 

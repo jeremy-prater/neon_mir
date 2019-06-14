@@ -8,8 +8,8 @@
 static std::string bpmUUID;
 
 AudioProcessor::AudioProcessor()
-    : handle("test-pipeline"), defaultSampleRate(44100), defaultChannels(2),
-      defaultWidth(16), defaultDurationMs(5 * 1000),
+    : handle("test-pipeline"), defaultSampleRate(44100), defaultChannels(1),
+      defaultWidth(16), defaultDurationMs(15 * 1000),
       audioProcessorThreadRunning(true),
       logger("AudioProcessor-", DebugLogger::DebugColor::COLOR_RED, false) {
   audioProcessorThread = std::thread(&AudioProcessor::audioProcessorLoop, this);
@@ -78,21 +78,19 @@ void AudioProcessor::audioProcessorLoop() {
     {
       std::scoped_lock<std::mutex> lock(audioQueueMutex);
       for (auto audioChunk : audioQueue) {
-        capnp::byte *audioChunkStart = &audioChunk.front();
+        float *audioChunkStart = &audioChunk.front();
         size_t bytesLeft = audioChunk.size();
         size_t offset = 0;
+
         while (bytesLeft) {
           size_t sendSize = std::min(4096, static_cast<int>(bytesLeft));
           auto request = controllerServer.pushAudioDataRequest();
           auto builder = controllerServer.pushAudioDataRequest().initData();
           builder.setUuid(sessionUUID);
-          kj::ArrayPtr<const capnp::byte> arrayPtr(audioChunkStart + offset,
-                                                   sendSize);
+          kj::ArrayPtr<const float> arrayPtr(audioChunkStart + offset,
+                                             sendSize);
           builder.setSegment(arrayPtr);
           request.setData(builder);
-
-          //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-          // "Sending [%d] bytes... [%d ] bytes left", sendSize, bytesLeft);
 
           offset += sendSize;
           bytesLeft -= sendSize;
@@ -134,14 +132,28 @@ void AudioProcessor::audioProcessorLoop() {
   return defaultDurationMs;
 }
 
-void AudioProcessor::processAudio(const capnp::byte *musicData,
+void AudioProcessor::processAudio(const float *musicData,
                                   const size_t musicDataLength) const noexcept {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Processing Chunk [%d] ",
-                  musicDataLength);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Processing Chunk
+  // [%d]",
+  //                 musicDataLength / 4);
+
+  for (size_t index = 0; index < musicDataLength; index++) {
+    const float value = musicData[index];
+    if ((value < -1) || (value > 1)) {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
+                      "Incoming Audio data out of range [-1, 1] ==> %f", value);
+      assert(0);
+    } else {
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+      //                 "Incoming Audio data in range ==> %f", value);
+    }
+  }
   {
     std::scoped_lock<std::mutex> lock(audioQueueMutex);
     audioQueue.push_back(
-        std::vector<capnp::byte>(musicData, musicData + musicDataLength));
+        std::vector<float>(musicData, musicData + musicDataLength));
   }
+
   audioProcessorWakeup.notify_all();
 }

@@ -4,6 +4,7 @@
 #include "boost/uuid/string_generator.hpp"
 #include "boost/uuid/uuid_io.hpp"
 #include "capnp/ez-rpc.h"
+#include "capnp/list.h"
 #include "capnp/serialize.h"
 #include "neon-mir.hpp"
 #include "neon.session.capnp.h"
@@ -176,9 +177,8 @@ SessionServer::Handler::pushAudioData(PushAudioDataContext context) {
 
   if (output) {
     std::scoped_lock<std::mutex> lock(output->audioSinkMutex);
-    essentia::Real *dataStart = (essentia::Real *)&newAudio.front();
-    ssize_t dataSize = newAudio.size() / (output->getWidth() / 8);
-    output->getAudioSink()->add(dataStart, dataSize);
+    output->getAudioSink()
+        ->add<::capnp::List<float, ::capnp::Kind::PRIMITIVE>::Reader>(newAudio);
   }
 
   return kj::READY_NOW;
@@ -288,10 +288,8 @@ SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
 
     pipeline->getBPMPipeline(&bpm, &confidence);
 
-    auto result = context.getResults().initResult();
-    result.setBpm(bpm);
-    result.setConfidence(confidence);
-    context.getResults().setResult(result);
+    context.getResults().getResult().setBpm(bpm);
+    context.getResults().getResult().setConfidence(confidence);
   }
   return kj::READY_NOW;
 }

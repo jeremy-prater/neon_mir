@@ -19,7 +19,7 @@ public:
                     const pa_sample_format_t format);
   void DestroyStream();
 
-  boost::signals2::signal<void(const capnp::byte *musicData,
+  boost::signals2::signal<void(const float *musicData,
                                const size_t musicDataLength)>
       newData;
 

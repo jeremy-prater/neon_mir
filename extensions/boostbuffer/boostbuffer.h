@@ -40,14 +40,30 @@ public:
   BoostRingBufferInput();
   ~BoostRingBufferInput();
 
-  void add(Real *inputData, int size);
+  template <class T> void add(T &container) {
+    // std::cout << "Added Audio" << std::endl;
+    std::lock_guard<std::mutex> lock(bufferMutex);
+    auto current = container.begin();
+    auto end = container.end();
+    int count = 0;
+    while (current != end) {
+      Real value = *current;
+      if ((value < -1) || (value > 1)) {
+        std::cout << "Audio value out of range! " << value << std::endl;
+        assert(0);
+      } else {
+        // std::cout << "Added Audio Count " << count++ << "value ==> " << value
+        //           << std::endl;
+      }
+      buffer->push_front(value);
+      current++;
+    }
+    // std::cout << "Added Audio count ==> " << count << std::endl;
+  }
 
   AlgorithmStatus process();
 
-  void declareParameters() {
-    declareParameter("bufferSize", "the size of the ringbuffer", "", 8192);
-  }
-
+  void declareParameters();
   void configure();
   void reset();
 

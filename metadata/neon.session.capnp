@@ -14,7 +14,7 @@ struct SessionConfig {
 
 struct SessionAudioPacket {
     uuid @0 :Text;
-    segment @1 :Data;
+    segment @1 :List(Float32);
 }
 
 struct BPMResult {

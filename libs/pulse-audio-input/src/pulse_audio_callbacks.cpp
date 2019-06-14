@@ -123,9 +123,10 @@ void NeonPulseInput::successCallback(pa_context *context, int success,
 
 void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
                                        void *userdata) {
-  const void *audioData;
+  const float *audioData;
   size_t audioDataSize;
-  int peekResult = pa_stream_peek(p, &audioData, &audioDataSize);
+  int peekResult = pa_stream_peek(
+      p, reinterpret_cast<const void **>(&audioData), &audioDataSize);
 
   if (peekResult) {
     instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
@@ -150,8 +151,17 @@ void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
     }
   } else if (audioDataSize) {
     // We actually have audio data!
-    // We'll just assume int16_t for now...
-    instance->newData(static_cast<const capnp::byte *>(audioData), audioDataSize);
+    // We'll just assume float32 for now...
+    for (int index = 0; index < audioDataSize / 4; index++) {
+      const float value = audioData[index];
+      if ((value < -1) || (value > 1)) {
+        instance->logger.WriteLog(
+            DebugLogger::DebugLevel::DEBUG_ERROR,
+            "Incoming data is outside valid range [-1, 1] ==> %f", value);
+        assert(0);
+      }
+    }
+    instance->newData(audioData, audioDataSize / 4);
     pa_stream_drop(p);
   } else {
     instance->logger.WriteLog(

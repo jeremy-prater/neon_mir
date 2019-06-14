@@ -49,9 +49,9 @@ void AudioSession::updateConfig(uint32_t newSampleRate, uint8_t newChannels,
       "Updating Config : SR [%d] Width [%d] Channels [%d] Duration [%f]",
       sampleRate, width, channels, duration);
 
-  frameSize = channels * (width / 8) * sampleRate * duration;
+  frameSize = channels * sampleRate * duration;
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_STATUS,
-                  "Allocating [%d] bytes", frameSize);
+                  "Allocating [%d] samples", frameSize);
 
   // essentia::ParameterMap pars;
   // pars.add("bufferSize", frameSize);

@@ -84,14 +84,24 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
                     "Starting BPM Worker thread");
 
     while (!shutdown) {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "BPM Worker thread step-start");
       root->shouldStop(false);
-      rhythmExtractor->reset();
-      audioNetwork->run();
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "BPM Worker thread step-end");
-      usleep(25 * 1000);
+
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+      //                 "Starting BPM ==> Tick");
+
+      try {
+        audioNetwork->run();
+      } catch (...) {
+        // Reset the extractor
+        rhythmExtractor->reset();
+        // Try again...
+        audioNetwork->run();
+      }
+
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+      //                 "Starting BPM ==> Tock");
+
+      usleep(100 * 1000);
     }
 
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -107,7 +117,11 @@ void NeonEssentiaSession::getBPMPipeline(essentia::Real *bpm,
   // Maybe lock pool here with mutex?
   if (pool.contains<essentia::Real>(rhythmKey))
     *bpm = pool.value<essentia::Real>(rhythmKey);
+  else
+    *bpm = 0;
 
   if (pool.contains<essentia::Real>(rhythmConfidence))
     *confidence = pool.value<essentia::Real>(rhythmConfidence) / 0.0532;
+  else
+    *confidence = 0;
 }
