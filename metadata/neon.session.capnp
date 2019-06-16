@@ -33,4 +33,7 @@ interface Controller {
 
     createBPMPipeLine    @6 (uuid :Text) -> (uuid: Text);
     getBPMPipeLineData   @7 (uuid :Text) -> (result :BPMResult);
+
+    createSpectrumPipe   @8 (uuid :Text) -> (uuid: Text);
+    getSpectrumData      @9 (uuid :Text);
 }

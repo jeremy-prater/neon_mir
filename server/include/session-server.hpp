@@ -27,10 +27,16 @@ public:
 
     virtual ::kj::Promise<void>
     releasePipeline(ReleasePipelineContext context) override;
+
     virtual ::kj::Promise<void>
     createBPMPipeLine(CreateBPMPipeLineContext context) override;
     virtual ::kj::Promise<void>
     getBPMPipeLineData(GetBPMPipeLineDataContext context) override;
+
+    virtual ::kj::Promise<void>
+    createSpectrumPipe(CreateSpectrumPipeContext context) override;
+    virtual ::kj::Promise<void>
+    getSpectrumData(GetSpectrumDataContext context) override;
 
   private:
     SessionServer *instance;

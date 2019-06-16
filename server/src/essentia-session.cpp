@@ -59,9 +59,10 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
     } else {
       std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
       root = it->second->getAudioSink();
-      root->output("signal") >> rhythmExtractor->input("signal");
     }
   }
+
+  root->output("signal") >> rhythmExtractor->input("signal");
 
   rhythmExtractor->input("signal").setAcquireSize(newChannels * (newWidth / 8) *
                                                   newSampleRate * newDuration);
@@ -124,4 +125,111 @@ void NeonEssentiaSession::getBPMPipeline(essentia::Real *bpm,
     *confidence = pool.value<essentia::Real>(rhythmConfidence) / 0.0532;
   else
     *confidence = 0;
+}
+
+void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
+                                                 uint8_t newChannels,
+                                                 uint8_t newWidth,
+                                                 double newDuration) {
+  int frameSize = 1024; // TODO : These should be tunable
+  int hopSize = 512;
+
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Creating Spectrum Pipeline");
+
+  auto frameCutter = algorithmFactory.create("FrameCutter", "frameSize",
+                                             frameSize, "hopSize", hopSize);
+  auto windowing =
+      algorithmFactory.create("Windowing", "type", "blackmanharris62");
+
+  auto spectrum = algorithmFactory.create("Spectrum");
+
+  essentia::streaming::Algorithm *root = nullptr;
+
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Connecting Algorithms");
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(audioSessionID));
+    if (it == AudioSession::activeSessions.end()) {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                      "Unknown Session UUID [%s]", audioSessionID.c_str());
+    } else {
+      std::scoped_lock<std::mutex> lock(it->second->audioSinkMutex);
+      root = it->second->getAudioSink();
+    }
+  }
+
+  // Audio -> FrameCutter
+  root->output("signal") >> frameCutter->input("signal");
+
+  // FrameCutter -> Windowing -> Spectrum
+  frameCutter->output("frame") >> windowing->input("frame");
+  windowing->output("frame") >> spectrum->input("frame");
+
+  spectrum->output("spectrum") >>
+      essentia::streaming::PoolConnector(pool, "spectrum");
+
+  audioNetwork = new essentia::scheduler::Network(root);
+
+  const char *stats[] = {"mean", "median", "min", "max"};
+
+  essentia::standard::Algorithm *spectrumAggregator =
+      essentia::standard::AlgorithmFactory::create(
+          "PoolAggregator", "defaultStats",
+          essentia::arrayToVector<std::string>(stats));
+
+  spectrumAggregator->input("input").set(pool);
+  spectrumAggregator->output("output").set(aggreatedPool);
+
+  {
+    std::scoped_lock<std::mutex> lock(algorithmMapMutex);
+    algorithmMap["frameCutter"] = frameCutter;
+    algorithmMap["windowing"] = windowing;
+    algorithmMap["spectrum"] = spectrum;
+    algorithmStdMap["spectrumAggregator"] = spectrumAggregator;
+  }
+
+  threadPool.push_back(new std::thread([this, root, spectrumAggregator]() {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Starting Spectrum Worker thread");
+
+    while (!shutdown) {
+      root->shouldStop(false);
+
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+      //                 "Starting Spectrum ==> Tick");
+
+      try {
+        audioNetwork->run();
+      } catch (...) {
+        logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                        "Spectrum Failed!!");
+      }
+
+      spectrumAggregator->compute();
+      // usleep(100 * 1000);
+    }
+
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "Spectrum Worker thread exit");
+  }));
+}
+
+void NeonEssentiaSession::getSpectrumData() {
+  const std::string spectrumKey = "spectrum";
+
+  // auto poolKeys = aggreatedPool.descriptorNames();
+  // for (auto key : poolKeys) {
+  //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+  //                   "AggregratedPool contains key ==> %s", key.c_str());
+  // }
+
+  auto poolKeys = aggreatedPool.getRealPool();
+  for (auto key : poolKeys) {
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s ==> %d bins",
+                    key.first.c_str(), key.second.size());
+  }
+  aggreatedPool.clear();
 }

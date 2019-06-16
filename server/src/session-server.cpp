@@ -293,3 +293,86 @@ SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
   }
   return kj::READY_NOW;
 }
+
+kj::Promise<void>
+SessionServer::Handler::createSpectrumPipe(CreateSpectrumPipeContext context) {
+  std::string audioSessionUUID = context.getParams().getUuid();
+
+  boost::uuids::uuid essentiaSessionUUID;
+  std::shared_ptr<NeonEssentiaSession> newSession;
+
+  bool collision = false;
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activePipelinesMutex);
+
+    do {
+      essentiaSessionUUID = boost::uuids::random_generator()();
+      auto it = AudioSession::activePipelines.find(essentiaSessionUUID);
+      if (it != AudioSession::activePipelines.end()) {
+        instance->logger.WriteLog(
+            DebugLogger::DebugLevel::DEBUG_WARNING,
+            "activePipelines UUID collision [%s]",
+            boost::uuids::to_string(essentiaSessionUUID).c_str());
+        collision = true;
+      }
+    } while (collision);
+
+    std::string uuidString = boost::uuids::to_string(essentiaSessionUUID);
+    newSession =
+        std::make_shared<NeonEssentiaSession>(audioSessionUUID, uuidString);
+    AudioSession::activePipelines[essentiaSessionUUID] = newSession;
+    context.getResults().setUuid(uuidString);
+  }
+
+  uint32_t sampleRate = 0;
+  uint8_t channels = 0;
+  uint8_t width = 0;
+  double duration = 0;
+
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activeSessionMutex);
+    auto it = AudioSession::activeSessions.find(
+        boost::uuids::string_generator()(audioSessionUUID));
+    if (it == AudioSession::activeSessions.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "activeSession UUID not found [%s]",
+                                audioSessionUUID.c_str());
+    } else {
+      auto audioSession = it->second;
+      sampleRate = audioSession->getSampleRate();
+      channels = audioSession->getChannels();
+      width = audioSession->getWidth();
+      duration = audioSession->getDuration();
+    }
+  }
+
+  if (sampleRate)
+    newSession->createSpectrumPipeline(sampleRate, channels, width, duration);
+
+  return kj::READY_NOW;
+}
+
+kj::Promise<void>
+SessionServer::Handler::getSpectrumData(GetSpectrumDataContext context) {
+  std::string spectrumUUID = context.getParams().getUuid();
+
+  std::shared_ptr<NeonEssentiaSession> pipeline = nullptr;
+  {
+    std::scoped_lock<std::mutex> lock(AudioSession::activePipelinesMutex);
+
+    auto it = AudioSession::activePipelines.find(
+        boost::uuids::string_generator()(spectrumUUID));
+    if (it == AudioSession::activePipelines.end()) {
+      instance->logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                                "Unknown Pipeline UUID [%s]",
+                                spectrumUUID.c_str());
+    } else {
+      pipeline = it->second;
+    }
+  }
+
+  if (pipeline.operator bool()) {
+    pipeline->getSpectrumData();
+  }
+  return kj::READY_NOW;
+}
