@@ -17,14 +17,24 @@
 #include <boost/bind.hpp>
 #include <unistd.h>
 
+#define NUM_SLICES 513
+
 using namespace Magnum;
 
-class NeonGFX1 : public Platform::Application {
+struct TriangleVertex {
+  Vector2 position;
+  Vector2 textureUV;
+};
+
+class NeonFullPipe : public Platform::Application {
 public:
-  explicit NeonGFX1(const Arguments &arguments);
-  virtual ~NeonGFX1();
+  explicit NeonFullPipe(const Arguments &arguments);
+  virtual ~NeonFullPipe();
 
 private:
+  TriangleVertex spectrumData[NUM_SLICES + 1];
+
+  void initalizeRenderData();
   void drawEvent() override;
 
   NeonPulseInput paInput;
@@ -35,4 +45,6 @@ private:
   NeonTestShader1 _shader;
 
   std::thread audioWorker;
+
+  DebugLogger logger;
 };

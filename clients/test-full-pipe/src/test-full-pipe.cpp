@@ -1,9 +1,11 @@
 #include "test-full-pipe.hpp"
 #include <Corrade/Utility/Resource.h>
+#include <Magnum/Math/Complex.h>
 
-NeonGFX1::NeonGFX1(const Arguments &arguments)
-    : Platform::Application{
-          arguments, Configuration{}.setTitle("Neon MIR Graphics Test 1")} {
+NeonFullPipe::NeonFullPipe(const Arguments &arguments)
+    : Platform::Application{arguments, Configuration{}.setTitle(
+                                           "Neon MIR Graphics Test 1")},
+      logger("RenderPipe", DebugLogger::DebugColor::COLOR_GREEN, false) {
 
   using namespace Magnum::Math::Literals;
   using namespace Corrade;
@@ -11,33 +13,18 @@ NeonGFX1::NeonGFX1(const Arguments &arguments)
   Utility::Resource rs{"data"};
 
   /* Print out the license */
-  Utility::Debug{} << rs.get("motd");
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Welcome !! ==> %s",
+                  rs.get("motd").c_str());
 
   GL::Renderer::setClearColor(0xa5c9ea_rgbf);
 
-  Debug{} << "This application is running on"
-          << GL::Context::current().version() << "using"
-          << GL::Context::current().rendererString();
+  auto version = GL::Context::current().version();
 
-  struct TriangleVertex {
-    Vector2 position;
-    Vector2 textureUV;
-  };
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Booting on OpenGL %d using %s", version,
+                  GL::Context::current().rendererString().c_str());
 
-  // This needs to be 513 indexes long
-  TriangleVertex data[]{
-      {{-0.8f, -0.85f}, {1, 1}}, /* Left vertex, red color */
-      {{0.75f, -0.5f}, {1, 0}},  /* Right vertex, green color */
-      {{0.2f, 0.8f}, {0, 1}}     /* Top vertex, blue color */
-  };
-
-  // TODO : need buffer update function from the backend
-
-  GL::Buffer buffer;
-  buffer.setData(data);
-  _mesh.setCount(513).addVertexBuffer(std::move(buffer), 0,
-                                      Shaders::Vector2D::Position{},
-                                      Shaders::Vector2D::TextureCoordinates{});
+  initalizeRenderData();
 
   audioWorker = std::thread([this] {
     paInput.Connect();
@@ -62,13 +49,60 @@ NeonGFX1::NeonGFX1(const Arguments &arguments)
   });
 }
 
-NeonGFX1::~NeonGFX1() {
+NeonFullPipe::~NeonFullPipe() {
   if (audioWorker.joinable()) {
     audioWorker.join();
   }
 }
 
-void NeonGFX1::drawEvent() {
+void NeonFullPipe::initalizeRenderData() {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+
+  GL::Buffer buffer;
+
+  spectrumData[0] = {{0.92f, -0.8f}, {1, 0}}; // Origin point
+
+  const Vector2 start = {-0.9f, -0.75f};
+  const Vector2 end = {0.5f, 0.9f};
+
+  const float scale = RAND_MAX / 1.3; //170;
+
+  for (int index = 0; index < NUM_SLICES; index++) {
+    const float percent = static_cast<float>(index) / NUM_SLICES;
+    auto newVector = Magnum::Math::lerp(start, end, percent);
+    newVector[0] *= static_cast<float>(rand()) / scale;
+    newVector[1] *= static_cast<float>(rand()) / scale;
+    TriangleVertex newSlice = {{newVector}, {1.0f - percent, 1}};
+
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                    "new slice %d ==> %f ==> %f, %f", index, percent,
+                    newSlice.position.x(), newSlice.position.y());
+    spectrumData[index + 1] = newSlice;
+  }
+
+  // Super debug mode
+  // for (int index = 0; index < 5; index++) {
+  //   logger.WriteLog(
+  //       DebugLogger::DebugLevel::DEBUG_INFO, "slice %d ==> %f, %f (%f, %f",
+  //       index, spectrumData[index].position.x(),
+  //       spectrumData[index].position.y(), spectrumData[index].textureUV.x(),
+  //       spectrumData[index].textureUV.y());
+  // }
+  // logger.WriteLog(
+  //     DebugLogger::DebugLevel::DEBUG_INFO, "slice 512 ==> %f, %f (%f, %f",
+  //     spectrumData[512].position.x(), spectrumData[512].position.y(),
+  //     spectrumData[512].textureUV.x(), spectrumData[512].textureUV.y());
+  // spectrumData[index] = {{-0.9f, -0.35f}, {1, 1}}; // Bottom left
+  // spectrumData[2] = {{0.5f, 0.9f}, {0, 1}};    // Top Right
+
+  buffer.setData(spectrumData);
+  _mesh.setPrimitive(Magnum::GL::MeshPrimitive::TriangleFan);
+  _mesh.setCount(NUM_SLICES + 1)
+      .addVertexBuffer(std::move(buffer), 0, Shaders::Vector2D::Position{},
+                       Shaders::Vector2D::TextureCoordinates{});
+}
+
+void NeonFullPipe::drawEvent() {
 
   Debug{} << __func__;
 
@@ -79,4 +113,4 @@ void NeonGFX1::drawEvent() {
   swapBuffers();
 }
 
-MAGNUM_APPLICATION_MAIN(NeonGFX1)
+MAGNUM_APPLICATION_MAIN(NeonFullPipe)
