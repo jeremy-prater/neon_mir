@@ -288,8 +288,9 @@ SessionServer::Handler::getBPMPipeLineData(GetBPMPipeLineDataContext context) {
 
     pipeline->getBPMPipeline(&bpm, &confidence);
 
-    context.getResults().getResult().setBpm(bpm);
-    context.getResults().getResult().setConfidence(confidence);
+    auto output = context.getResults().getData();
+    output.setBpm(bpm);
+    output.setConfidence(confidence);
   }
   return kj::READY_NOW;
 }
@@ -372,7 +373,8 @@ SessionServer::Handler::getSpectrumData(GetSpectrumDataContext context) {
   }
 
   if (pipeline.operator bool()) {
-    pipeline->getSpectrumData();
+    auto data = context.getResults();
+    pipeline->getSpectrumData(data);
   }
   return kj::READY_NOW;
 }

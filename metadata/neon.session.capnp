@@ -17,10 +17,18 @@ struct SessionAudioPacket {
     segment @1 :List(Float32);
 }
 
-struct BPMResult {
+struct BPMData {
     bpm        @0  :Float32;
     confidence @1  :Float32;
 }
+
+struct SpectrumData {
+    max       @0  :List(Float32);
+    mean      @1  :List(Float32);
+    median    @2  :List(Float32);
+    min       @3  :List(Float32);
+}
+
 
 interface Controller {
     createSession        @0 (name :Text) -> (uuid :Text);
@@ -32,8 +40,8 @@ interface Controller {
     releasePipeline      @5 (uuid: Text);
 
     createBPMPipeLine    @6 (uuid :Text) -> (uuid: Text);
-    getBPMPipeLineData   @7 (uuid :Text) -> (result :BPMResult);
+    getBPMPipeLineData   @7 (uuid :Text) -> (data :BPMData);
 
     createSpectrumPipe   @8 (uuid :Text) -> (uuid: Text);
-    getSpectrumData      @9 (uuid :Text);
+    getSpectrumData      @9 (uuid :Text) -> (data: SpectrumData);
 }

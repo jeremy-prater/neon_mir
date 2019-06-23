@@ -9,6 +9,9 @@
 #include <thread>
 #include <unordered_map>
 
+// Meta-apis...
+#include "neon.session.capnp.h"
+
 class NeonEssentiaSession {
 public:
   NeonEssentiaSession(const std::string audioSessID, const std::string sessID);
@@ -23,7 +26,8 @@ public:
 
   void createSpectrumPipeline(uint32_t newSampleRate, uint8_t newChannels,
                               uint8_t newWidth, double newDuration);
-  void getSpectrumData();
+  void getSpectrumData(
+      ::neon::session::Controller::GetSpectrumDataResults::Builder &data);
 
 private:
   const std::string audioSessionID;

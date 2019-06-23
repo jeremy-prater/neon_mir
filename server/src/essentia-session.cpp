@@ -173,6 +173,8 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
 
   audioNetwork = new essentia::scheduler::Network(root);
 
+  // TODO : These should be defined by the client and
+  // returned to the client...
   const char *stats[] = {"mean", "median", "min", "max"};
 
   essentia::standard::Algorithm *spectrumAggregator =
@@ -217,7 +219,8 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
   }));
 }
 
-void NeonEssentiaSession::getSpectrumData() {
+void NeonEssentiaSession::getSpectrumData(
+    ::neon::session::Controller::GetSpectrumDataResults::Builder &results) {
   const std::string spectrumKey = "spectrum";
 
   // auto poolKeys = aggreatedPool.descriptorNames();
@@ -228,8 +231,24 @@ void NeonEssentiaSession::getSpectrumData() {
 
   auto poolKeys = aggreatedPool.getRealPool();
   for (auto key : poolKeys) {
+    auto curKey = key.first;
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s ==> %d bins",
-                    key.first.c_str(), key.second.size());
+                    curKey.c_str(), key.second.size());
+    if (curKey == "spectum.max")
+    //setMax(::kj::ArrayPtr<const float> value);
+      results.getData().setMax(
+        ::neon::session::SpectrumData::init
+        key.second);
+    else if (curKey == "spectum.max")
+      results.getData().setMax(key.second);
+    else if (curKey == "spectum.max")
+      results.getData().setMax(key.second);
+    else if (curKey == "spectum.max")
+      results.getData().setMax(key.second);
+    else {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
+                      "Unknown Key [%s]", curKey.c_str());
+    }
   }
   aggreatedPool.clear();
 }

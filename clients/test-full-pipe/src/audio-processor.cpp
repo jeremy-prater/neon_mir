@@ -105,7 +105,21 @@ void AudioProcessor::audioProcessorLoop() {
       request.setUuid(spectrumUUID);
       auto promise = request.send();
       auto response = promise.wait(waitScope);
+      auto data = response.getData();
+
+      // Well we have the data...
+
+      // How dangerous can we be with STL???
+      auto max = data.getMax();
+      auto mean = data.getMean();
+      auto median = data.getMedian();
+      auto min = data.getMin();
+
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                      "Frame [%d] %d %d %d %d", count, max.size(), mean.size(),
+                      median.size(), min.size());
     }
+    count++;
   }
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "AudioProcessor Thread Exited");

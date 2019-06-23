@@ -103,7 +103,7 @@ void AudioProcessor::audioProcessorLoop() {
       request.setUuid(bpmUUID);
       auto promise = request.send();
       auto response = promise.wait(waitScope);
-      auto bpmData = response.getResult();
+      auto bpmData = response.getData();
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "BPM [%f] [%f%%]",
                       bpmData.getBpm(), bpmData.getConfidence());
     }
