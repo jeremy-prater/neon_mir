@@ -183,7 +183,7 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
           essentia::arrayToVector<std::string>(stats));
 
   spectrumAggregator->input("input").set(pool);
-  spectrumAggregator->output("output").set(aggreatedPool);
+  spectrumAggregator->output("output").set(aggregatedPool);
 
   {
     std::scoped_lock<std::mutex> lock(algorithmMapMutex);
@@ -223,13 +223,16 @@ void NeonEssentiaSession::getSpectrumData(
     ::neon::session::Controller::GetSpectrumDataResults::Builder &results) {
   const std::string spectrumKey = "spectrum";
 
-  // auto poolKeys = aggreatedPool.descriptorNames();
+  // auto poolKeys = aggregatedPool.descriptorNames();
   // for (auto key : poolKeys) {
   //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
   //                   "AggregratedPool contains key ==> %s", key.c_str());
   // }
 
-  auto poolKeys = aggreatedPool.getRealPool();
+  auto poolKeys = aggregatedPool.getRealPool();
+
+// To queue bins or not to queue bins...
+
   for (auto key : poolKeys) {
     auto curKey = key.first;
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s ==> %d bins",
@@ -237,6 +240,7 @@ void NeonEssentiaSession::getSpectrumData(
     if (curKey == "spectum.max")
     //setMax(::kj::ArrayPtr<const float> value);
       results.getData().setMax(
+        kj::ArrayPtr()
         ::neon::session::SpectrumData::init
         key.second);
     else if (curKey == "spectum.max")
@@ -250,5 +254,5 @@ void NeonEssentiaSession::getSpectrumData(
                       "Unknown Key [%s]", curKey.c_str());
     }
   }
-  aggreatedPool.clear();
+  aggregatedPool.clear();
 }

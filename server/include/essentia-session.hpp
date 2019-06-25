@@ -36,7 +36,7 @@ private:
   essentia::streaming::AlgorithmFactory &algorithmFactory;
   essentia::scheduler::Network *audioNetwork;
   essentia::Pool pool;
-  essentia::Pool aggreatedPool;
+  essentia::Pool aggregatedPool;
 
   std::mutex algorithmMapMutex;
   std::unordered_map<std::string, essentia::streaming::Algorithm *>
