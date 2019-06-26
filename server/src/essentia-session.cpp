@@ -231,24 +231,25 @@ void NeonEssentiaSession::getSpectrumData(
 
   auto poolKeys = aggregatedPool.getRealPool();
 
-// To queue bins or not to queue bins...
+  // To queue bins or not to queue bins...
 
   for (auto key : poolKeys) {
     auto curKey = key.first;
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s ==> %d bins",
                     curKey.c_str(), key.second.size());
-    if (curKey == "spectum.max")
-    //setMax(::kj::ArrayPtr<const float> value);
+    if (curKey == "spectrum.max")
+      // setMax(::kj::ArrayPtr<const float> value);
       results.getData().setMax(
-        kj::ArrayPtr()
-        ::neon::session::SpectrumData::init
-        key.second);
-    else if (curKey == "spectum.max")
-      results.getData().setMax(key.second);
-    else if (curKey == "spectum.max")
-      results.getData().setMax(key.second);
-    else if (curKey == "spectum.max")
-      results.getData().setMax(key.second);
+          kj::arrayPtr(key.second.data(), key.second.size()));
+    else if (curKey == "spectrum.min")
+      results.getData().setMin(
+          kj::arrayPtr(key.second.data(), key.second.size()));
+    else if (curKey == "spectrum.mean")
+      results.getData().setMean(
+          kj::arrayPtr(key.second.data(), key.second.size()));
+    else if (curKey == "spectrum.median")
+      results.getData().setMedian(
+          kj::arrayPtr(key.second.data(), key.second.size()));
     else {
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                       "Unknown Key [%s]", curKey.c_str());

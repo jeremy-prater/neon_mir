@@ -99,12 +99,17 @@ void AudioProcessor::audioProcessorLoop() {
     }
 
     {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum Data");
 
       auto request = controllerServer.getSpectrumDataRequest();
       request.setUuid(spectrumUUID);
       auto promise = request.send();
       auto response = promise.wait(waitScope);
+      auto data = response.getData();
+
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                      "Get Spectrum Data %d %d %d %d", data.getMin().size(),
+                      data.getMean().size(), data.getMedian().size(),
+                      data.getMax().size());
     }
   }
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
