@@ -9,7 +9,8 @@ NeonSpectrumGFX *NeonSpectrumGFX::getInstance() { return instance; }
 NeonSpectrumGFX::NeonSpectrumGFX(const Arguments &arguments)
     : Platform::Application{arguments, Configuration{}.setTitle(
                                            "Neon MIR Graphics Test 1")},
-      spectrumDataMeanHead(0), spectrumDataMeanTail(0), shutdown(false),
+      spectrumDataMeanHead(0), spectrumDataMeanTail(RING_SIZE - 1),
+      shutdown(false),
       logger("RenderPipe", DebugLogger::DebugColor::COLOR_GREEN, false) {
 
   using namespace Magnum::Math::Literals;
@@ -106,20 +107,26 @@ void NeonSpectrumGFX::initalizeRenderData() {
   }
 
   updateData();
+  drawEvent();
 }
-inline void NeonSpectrumGFX::spectrumDataCheckSlice(uint8_t &position) const {
+inline void NeonSpectrumGFX::spectrumDataCheckSlice(uint32_t &position) const {
   if (position == RING_SIZE) {
     position = 0;
   }
 }
 
 inline bool NeonSpectrumGFX::spectrumDataMeanEmpty() const noexcept {
-  return spectrumDataMeanTail == spectrumDataMeanHead;
+  // Lock access to the circular buffer
+  std::scoped_lock<std::mutex> lock(audioFrameMutex);
+  bool result = (spectrumDataMeanTail == spectrumDataMeanHead);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s %d %d = %d",
+                  __func__, spectrumDataMeanHead, spectrumDataMeanTail, result);
+  return result;
 }
 
 float *NeonSpectrumGFX::spectrumDataMeanGetSlice() const noexcept {
-  // Lock access to the circular buffer
-  std::scoped_lock<std::mutex> lock(audioFrameMutex);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+
   // Attempt to move the tail up
   if (spectrumDataMeanEmpty()) {
     // Buffer Underrun
@@ -132,33 +139,42 @@ float *NeonSpectrumGFX::spectrumDataMeanGetSlice() const noexcept {
     return returnData;
   }
 }
+void NeonSpectrumGFX::spectrumDataMeanFillSlice(uint32_t index, float data) {
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  spectrumDataMean[spectrumDataMeanHead][index] = 0.0; // data;
+}
 
-void NeonSpectrumGFX::spectrumDataMeanPushSlice(float *newData) noexcept {
+void NeonSpectrumGFX::spectrumDataMeanPushSlice() noexcept {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+
   // Lock access to the circular buffer
   std::scoped_lock<std::mutex> lock(audioFrameMutex);
   // Attempt to push data
-  if (spectrumDataMeanHead == (spectrumDataMeanTail + 1)) {
+  // Fix corner case here ...
+  if (spectrumDataMeanHead + 1 == spectrumDataMeanTail) {
     // Buffer Overrun... Force client to lose data... Sorry
     spectrumDataMeanTail++;
     spectrumDataCheckSlice(spectrumDataMeanTail);
   } else {
     spectrumDataMeanHead++;
     spectrumDataCheckSlice(spectrumDataMeanHead);
-    memcpy(spectrumDataMean[spectrumDataMeanHead], newData, NUM_SLICES);
   }
 }
 
 void NeonSpectrumGFX::updateRenderData() {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+
   // audioFrames should be a vector of frames...
   // We'll pop one from the stack and render it into the triangle...
-  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
   if (!spectrumDataMeanEmpty()) {
 
     // Implement a performance timer here...
 
-    std::scoped_lock<std::mutex> lock(audioFrameMutex);
     auto audioData = spectrumDataMeanGetSlice();
+
+    if (audioData == nullptr)
+      return;
 
     spectrumData[0] = {{0.92f, -0.8f}, {1, 0}}; // Origin point
 
@@ -171,7 +187,15 @@ void NeonSpectrumGFX::updateRenderData() {
       float lastValue = 1;
       const float percent = static_cast<float>(index) / NUM_SLICES;
       auto newVector = Magnum::Math::lerp(start, end, percent);
-      float audioValue = audioData[index] * scale;
+
+      // Convert from scale ...
+      // -1.0 --- 0.0 --- 1.0
+      //  -x  --- 1.0 --- +x
+
+      float rawValue = 1.0f; //audioData[index] * scale;
+
+      float fuzz = (static_cast<float>(rand()) / RAND_MAX) * (1.3);
+      float audioValue = rawValue * fuzz;
       newVector[0] *= lastValue;
       newVector[1] *= audioValue;
 
@@ -191,6 +215,8 @@ void NeonSpectrumGFX::updateRenderData() {
 }
 
 void NeonSpectrumGFX::updateData() {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+
   GL::Buffer buffer;
   buffer.setData(spectrumData);
   _mesh.setPrimitive(Magnum::GL::MeshPrimitive::TriangleFan);

@@ -1,4 +1,5 @@
 #include "audio-processor.hpp"
+#include "test-spectrum-gfx.hpp"
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -60,7 +61,6 @@ void AudioProcessor::audioProcessorLoop() {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                     "Created Spectrum Pipeline [%s]", spectrumUUID.c_str());
   }
-  int count = 0;
 
   while (audioProcessorThreadRunning) {
     // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -115,11 +115,21 @@ void AudioProcessor::audioProcessorLoop() {
       auto median = data.getMedian();
       auto min = data.getMin();
 
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "Frame [%d] %d %d %d %d", count, max.size(), mean.size(),
-                      median.size(), min.size());
+      int count = mean.size() / NUM_SLICES;
+      int index = 0;
+      auto instance = NeonSpectrumGFX::getInstance();
+      while (index < count) {
+        logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Frame %d ==> %d",
+                        index, count);
+        int indexOffset = index * NUM_SLICES;
+        for (int sliceIndex = 0; sliceIndex < NUM_SLICES; sliceIndex++) {
+          instance->spectrumDataMeanFillSlice(sliceIndex,
+                                              mean[sliceIndex + indexOffset]);
+        }
+        instance->spectrumDataMeanPushSlice();
+        index++;
+      }
     }
-    count++;
   }
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "AudioProcessor Thread Exited");

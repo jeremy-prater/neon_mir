@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Texture.h>
 #include <Magnum/Math/Color.h>

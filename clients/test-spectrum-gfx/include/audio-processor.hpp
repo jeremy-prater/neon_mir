@@ -1,3 +1,5 @@
+#pragma once
+
 #include "capnp/ez-rpc.h"
 #include "capnp/serialize.h"
 #include "debuglogger.hpp"

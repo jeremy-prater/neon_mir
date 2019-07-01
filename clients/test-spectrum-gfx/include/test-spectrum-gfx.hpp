@@ -1,3 +1,5 @@
+#pragma once
+
 #include "audio-processor.hpp"
 #include "capnp/list.h"
 #include "debuglogger.hpp"
@@ -37,9 +39,9 @@ public:
   explicit NeonSpectrumGFX(const Arguments &arguments);
   virtual ~NeonSpectrumGFX();
 
-
   float *spectrumDataMeanGetSlice() const noexcept;
-  void spectrumDataMeanPushSlice(float *) noexcept;
+  void spectrumDataMeanFillSlice(uint32_t index, float data);
+  void spectrumDataMeanPushSlice() noexcept;
   inline bool spectrumDataMeanEmpty() const noexcept;
   void addSlices(std::vector<float> &newData) noexcept;
 
@@ -51,14 +53,14 @@ private:
   TriangleVertex spectrumData[NUM_SLICES + 1];
 
   // Generic ring buffer function
-  inline void spectrumDataCheckSlice(uint8_t &position) const;
+  inline void spectrumDataCheckSlice(uint32_t &position) const;
 
   // There could also be max, min, median...
   // WTF even is this? It's all mutable...
   mutable std::mutex audioFrameMutex;
   mutable float spectrumDataMean[RING_SIZE][NUM_SLICES + 1];
-  mutable uint8_t spectrumDataMeanHead;
-  mutable uint8_t spectrumDataMeanTail;
+  mutable uint32_t spectrumDataMeanHead;
+  mutable uint32_t spectrumDataMeanTail;
 
   // Main loop functions
   void initalizeRenderData();
