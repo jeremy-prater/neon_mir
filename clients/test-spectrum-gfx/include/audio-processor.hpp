@@ -25,10 +25,10 @@ public:
   void processAudio(const float *musicData,
                     const size_t musicDataLength) const noexcept;
 
-  [[nodiscard]] const uint32_t getSampleRate() const noexcept;
-  [[nodiscard]] const uint8_t getChannels() const noexcept;
-  [[nodiscard]] const uint8_t getWidth() const noexcept;
-  [[nodiscard]] const uint32_t getDurationMs() const noexcept;
+  [[nodiscard]] uint32_t getSampleRate() const noexcept;
+  [[nodiscard]] uint8_t getChannels() const noexcept;
+  [[nodiscard]] uint8_t getWidth() const noexcept;
+  [[nodiscard]] uint32_t getDurationMs() const noexcept;
 
 private:
   const std::string handle;

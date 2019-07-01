@@ -34,7 +34,7 @@ corrade_add_resource(Resources_shaders resources/test-gfx-shaders.conf)
 
 # Source Files GFX
 set(NEON_GFX_SRC
-  ${PROJECT_SOURCE_DIR}/src/test-gfx-1.cpp
+  ${PROJECT_SOURCE_DIR}/src/test-spectrum-gfx.cpp
   ${PROJECT_SOURCE_DIR}/src/test-shader-1.cpp
   neon.session.capnp.c++
 )

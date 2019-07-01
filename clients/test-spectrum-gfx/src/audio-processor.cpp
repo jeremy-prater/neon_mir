@@ -9,9 +9,9 @@ static std::string spectrumUUID;
 
 AudioProcessor::AudioProcessor()
     : handle("test-pipeline"), defaultSampleRate(44100), defaultChannels(1),
-      defaultWidth(16), defaultDurationMs(1 * 1000),
+      defaultWidth(16), defaultDurationMs(50),
       audioProcessorThreadRunning(true),
-      logger("AudioProcessor-", DebugLogger::DebugColor::COLOR_RED, false) {
+      logger("AudioProcessor", DebugLogger::DebugColor::COLOR_RED, false) {
   audioProcessorThread = std::thread(&AudioProcessor::audioProcessorLoop, this);
 }
 
@@ -99,6 +99,7 @@ void AudioProcessor::audioProcessorLoop() {
     }
 
     {
+      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum Data");
 
       auto request = controllerServer.getSpectrumDataRequest();
       request.setUuid(spectrumUUID);
@@ -106,29 +107,37 @@ void AudioProcessor::audioProcessorLoop() {
       auto response = promise.wait(waitScope);
       auto data = response.getData();
 
+      // Well we have the data...
+
+      // How dangerous can we be with STL???
+      auto max = data.getMax();
+      auto mean = data.getMean();
+      auto median = data.getMedian();
+      auto min = data.getMin();
+
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "Get Spectrum Data %d %d %d %d", data.getMin().size(),
-                      data.getMean().size(), data.getMedian().size(),
-                      data.getMax().size());
+                      "Frame [%d] %d %d %d %d", count, max.size(), mean.size(),
+                      median.size(), min.size());
     }
+    count++;
   }
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "AudioProcessor Thread Exited");
 }
 
-[[nodiscard]] const uint32_t AudioProcessor::getSampleRate() const noexcept {
+[[nodiscard]] uint32_t AudioProcessor::getSampleRate() const noexcept {
   return defaultSampleRate;
 }
 
-[[nodiscard]] const uint8_t AudioProcessor::getChannels() const noexcept {
+[[nodiscard]] uint8_t AudioProcessor::getChannels() const noexcept {
   return defaultChannels;
 }
 
-[[nodiscard]] const uint8_t AudioProcessor::getWidth() const noexcept {
+[[nodiscard]] uint8_t AudioProcessor::getWidth() const noexcept {
   return defaultWidth;
 }
 
-[[nodiscard]] const uint32_t AudioProcessor::getDurationMs() const noexcept {
+[[nodiscard]] uint32_t AudioProcessor::getDurationMs() const noexcept {
   return defaultDurationMs;
 }
 
@@ -142,7 +151,8 @@ void AudioProcessor::processAudio(const float *musicData,
     const float value = musicData[index];
     if ((value < -1) || (value > 1)) {
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
-                      "Incoming Audio data out of range [-1, 1] ==> %f", value);
+                      "Incoming Audio data out of range [-1, 1] ==> %f",
+                      static_cast<double>(value));
       assert(0);
     } else {
       // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
