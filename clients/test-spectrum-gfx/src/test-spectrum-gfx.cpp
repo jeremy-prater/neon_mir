@@ -141,7 +141,7 @@ float *NeonSpectrumGFX::spectrumDataMeanGetSlice() const noexcept {
 }
 void NeonSpectrumGFX::spectrumDataMeanFillSlice(uint32_t index, float data) {
   // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
-  spectrumDataMean[spectrumDataMeanHead][index] = 0.0; // data;
+  spectrumDataMean[spectrumDataMeanHead][index] = data;
 }
 
 void NeonSpectrumGFX::spectrumDataMeanPushSlice() noexcept {
@@ -192,9 +192,9 @@ void NeonSpectrumGFX::updateRenderData() {
       // -1.0 --- 0.0 --- 1.0
       //  -x  --- 1.0 --- +x
 
-      float rawValue = 1.0f; //audioData[index] * scale;
+      float rawValue = audioData[index] * scale;
 
-      float fuzz = (static_cast<float>(rand()) / RAND_MAX) * (1.3);
+      float fuzz = 1.0f; //(static_cast<float>(rand()) / RAND_MAX) * (1.3);
       float audioValue = rawValue * fuzz;
       newVector[0] *= lastValue;
       newVector[1] *= audioValue;

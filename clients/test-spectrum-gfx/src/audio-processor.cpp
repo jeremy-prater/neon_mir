@@ -110,12 +110,9 @@ void AudioProcessor::audioProcessorLoop() {
       // Well we have the data...
 
       // How dangerous can we be with STL???
-      auto max = data.getMax();
-      auto mean = data.getMean();
-      auto median = data.getMedian();
-      auto min = data.getMin();
+      auto raw = data.getRaw();
 
-      int count = mean.size() / NUM_SLICES;
+      int count = raw.size() / NUM_SLICES;
       int index = 0;
       auto instance = NeonSpectrumGFX::getInstance();
       while (index < count) {
@@ -124,7 +121,7 @@ void AudioProcessor::audioProcessorLoop() {
         int indexOffset = index * NUM_SLICES;
         for (int sliceIndex = 0; sliceIndex < NUM_SLICES; sliceIndex++) {
           instance->spectrumDataMeanFillSlice(sliceIndex,
-                                              mean[sliceIndex + indexOffset]);
+                                              raw[sliceIndex + indexOffset]);
         }
         instance->spectrumDataMeanPushSlice();
         index++;

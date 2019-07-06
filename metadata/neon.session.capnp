@@ -23,10 +23,7 @@ struct BPMData {
 }
 
 struct SpectrumData {
-    max       @0  :List(Float32);
-    mean      @1  :List(Float32);
-    median    @2  :List(Float32);
-    min       @3  :List(Float32);
+    raw       @0  :List(Float32);
 }
 
 

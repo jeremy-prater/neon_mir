@@ -173,27 +173,14 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
 
   audioNetwork = new essentia::scheduler::Network(root);
 
-  // TODO : These should be defined by the client and
-  // returned to the client...
-  const char *stats[] = {"mean", "median", "min", "max"};
-
-  essentia::standard::Algorithm *spectrumAggregator =
-      essentia::standard::AlgorithmFactory::create(
-          "PoolAggregator", "defaultStats",
-          essentia::arrayToVector<std::string>(stats));
-
-  spectrumAggregator->input("input").set(pool);
-  spectrumAggregator->output("output").set(aggregatedPool);
-
   {
     std::scoped_lock<std::mutex> lock(algorithmMapMutex);
     algorithmMap["frameCutter"] = frameCutter;
     algorithmMap["windowing"] = windowing;
     algorithmMap["spectrum"] = spectrum;
-    algorithmStdMap["spectrumAggregator"] = spectrumAggregator;
   }
 
-  threadPool.push_back(new std::thread([this, root, spectrumAggregator]() {
+  threadPool.push_back(new std::thread([this, root]() {
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                     "Starting Spectrum Worker thread");
 
@@ -210,8 +197,7 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
                         "Spectrum Failed!!");
       }
 
-      spectrumAggregator->compute();
-      // usleep(100 * 1000);
+      usleep(50 * 1000);
     }
 
     logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -223,37 +209,14 @@ void NeonEssentiaSession::getSpectrumData(
     ::neon::session::Controller::GetSpectrumDataResults::Builder &results) {
   const std::string spectrumKey = "spectrum";
 
-  // auto poolKeys = aggregatedPool.descriptorNames();
-  // for (auto key : poolKeys) {
-  //   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-  //                   "AggregratedPool contains key ==> %s", key.c_str());
-  // }
+  // Maybe lock pool here with mutex?
+  if (pool.contains<std::vector<std::vector<essentia::Real>>>(spectrumKey)) {
+    auto dataChunks =
+        pool.value<std::vector<std::vector<essentia::Real>>>(spectrumKey);
 
-  auto poolKeys = aggregatedPool.getRealPool();
-
-  // To queue bins or not to queue bins...
-
-  for (auto key : poolKeys) {
-    auto curKey = key.first;
-    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s ==> %d bins",
-                    curKey.c_str(), key.second.size());
-    if (curKey == "spectrum.max")
-      // setMax(::kj::ArrayPtr<const float> value);
-      results.getData().setMax(
-          kj::arrayPtr(key.second.data(), key.second.size()));
-    else if (curKey == "spectrum.min")
-      results.getData().setMin(
-          kj::arrayPtr(key.second.data(), key.second.size()));
-    else if (curKey == "spectrum.mean")
-      results.getData().setMean(
-          kj::arrayPtr(key.second.data(), key.second.size()));
-    else if (curKey == "spectrum.median")
-      results.getData().setMedian(
-          kj::arrayPtr(key.second.data(), key.second.size()));
-    else {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-                      "Unknown Key [%s]", curKey.c_str());
+    for (auto chunk : dataChunks) {
+      results.getData().setRaw(kj::arrayPtr(chunk.data(), chunk.size()));
     }
+    pool.clear();
   }
-  aggregatedPool.clear();
 }
