@@ -65,8 +65,6 @@ NeonSpectrumGFX::NeonSpectrumGFX(const Arguments &arguments)
     updateRenderData();
 
     usleep(50 * 1000); // 20 FPS @ 50 ms/frame
-
-    // Cause redraw...
   }
 }
 

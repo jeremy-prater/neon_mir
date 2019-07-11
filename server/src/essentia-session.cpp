@@ -91,6 +91,7 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
       //                 "Starting BPM ==> Tick");
 
       try {
+        std::scoped_lock<std::mutex> lock(poolMutex);
         audioNetwork->run();
       } catch (...) {
         // Reset the extractor
@@ -112,6 +113,7 @@ void NeonEssentiaSession::createBPMPipeline(uint32_t newSampleRate,
 
 void NeonEssentiaSession::getBPMPipeline(essentia::Real *bpm,
                                          essentia::Real *confidence) {
+  std::scoped_lock<std::mutex> lock(poolMutex);
   const std::string rhythmKey = "rhythm.bpm";
   const std::string rhythmConfidence = "rhythm.confidence";
 
@@ -139,10 +141,13 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
 
   auto frameCutter = algorithmFactory.create("FrameCutter", "frameSize",
                                              frameSize, "hopSize", hopSize);
-  auto windowing =
-      algorithmFactory.create("Windowing", "type", "blackmanharris62");
+  auto windowing = algorithmFactory.create("Windowing", "type", "hann");
 
   auto spectrum = algorithmFactory.create("Spectrum");
+  auto logSpectrum =
+      algorithmFactory.create("LogSpectrum", "frameSize", frameSize);
+  auto nnls = algorithmFactory.create("NNLSChroma", "frameSize", frameSize,
+                                      "sampleRate", newSampleRate);
 
   essentia::streaming::Algorithm *root = nullptr;
 
@@ -166,10 +171,28 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
 
   // FrameCutter -> Windowing -> Spectrum
   frameCutter->output("frame") >> windowing->input("frame");
+
   windowing->output("frame") >> spectrum->input("frame");
 
-  spectrum->output("spectrum") >>
+  spectrum->output("spectrum") >> logSpectrum->input("spectrum");
+
+  logSpectrum->output("meanTuning") >> essentia::streaming::NOWHERE;
+  logSpectrum->output("localTuning") >> essentia::streaming::NOWHERE;
+  logSpectrum->output("logFreqSpectrum") >>
       essentia::streaming::PoolConnector(pool, "spectrum");
+
+  // logSpectrum->output("meanTuning") >> nnls->input("meanTuning");
+  // logSpectrum->output("localTuning") >> nnls->input("localTuning");
+  // logSpectrum->output("logFreqSpectrum") >> nnls->input("logSpectrogram");
+
+  // nnls->output("tunedLogfreqSpectrum") >>
+  //     essentia::streaming::PoolConnector(pool, "tunedLogfreqSpectrum");
+  // nnls->output("semitoneSpectrum") >>
+  //     essentia::streaming::PoolConnector(pool, "semitoneSpectrum");
+  // nnls->output("bassChromagram") >>
+  //     essentia::streaming::PoolConnector(pool, "bassChromagram");
+  // nnls->output("chromagram") >>
+  //     essentia::streaming::PoolConnector(pool, "chromagram");
 
   audioNetwork = new essentia::scheduler::Network(root);
 
@@ -178,6 +201,8 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
     algorithmMap["frameCutter"] = frameCutter;
     algorithmMap["windowing"] = windowing;
     algorithmMap["spectrum"] = spectrum;
+    algorithmMap["logSpectrum"] = logSpectrum;
+    // algorithmMap["nnls"] = nnls;
   }
 
   threadPool.push_back(new std::thread([this, root]() {
@@ -191,6 +216,7 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
       //                 "Starting Spectrum ==> Tick");
 
       try {
+        std::scoped_lock<std::mutex> lock(poolMutex);
         audioNetwork->run();
       } catch (...) {
         logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
@@ -207,16 +233,29 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
 
 void NeonEssentiaSession::getSpectrumData(
     ::neon::session::Controller::GetSpectrumDataResults::Builder &results) {
+  static essentia::Real lastChunk[256];
+
+  std::scoped_lock<std::mutex> lock(poolMutex);
+
   const std::string spectrumKey = "spectrum";
+
+  memset(lastChunk, 0, sizeof(lastChunk));
 
   // Maybe lock pool here with mutex?
   if (pool.contains<std::vector<std::vector<essentia::Real>>>(spectrumKey)) {
     auto dataChunks =
         pool.value<std::vector<std::vector<essentia::Real>>>(spectrumKey);
 
+    // Aggregrate the frame into one...
+    // O(n^2) :(
+
     for (auto chunk : dataChunks) {
-      results.getData().setRaw(kj::arrayPtr(chunk.data(), chunk.size()));
+      for (ssize_t index = 0; index < chunk.size(); index++) {
+        lastChunk[index] += chunk[index];
+      }
     }
+
+    results.getData().setRaw(kj::arrayPtr(lastChunk, 256));
     pool.clear();
   }
 }

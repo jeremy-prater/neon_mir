@@ -44,6 +44,8 @@ private:
   std::unordered_map<std::string, essentia::standard::Algorithm *>
       algorithmStdMap;
 
+  std::mutex poolMutex;
+
   bool shutdown;
   std::vector<std::thread *> threadPool;
 

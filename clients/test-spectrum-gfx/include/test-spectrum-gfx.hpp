@@ -22,7 +22,7 @@
 #include <deque>
 #include <unistd.h>
 
-#define NUM_SLICES 513
+#define NUM_SLICES 256
 #define RING_SIZE 200
 
 using namespace Magnum;
