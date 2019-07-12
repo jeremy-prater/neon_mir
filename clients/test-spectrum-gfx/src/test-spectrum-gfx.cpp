@@ -2,6 +2,11 @@
 #include <Corrade/Utility/Resource.h>
 #include <Magnum/Math/Complex.h>
 
+// Codec : MP4
+// Resolution : 1080p
+// RGBA
+
+
 NeonSpectrumGFX *NeonSpectrumGFX::instance = nullptr;
 
 NeonSpectrumGFX *NeonSpectrumGFX::getInstance() { return instance; }
