@@ -73,6 +73,9 @@ private:
   NeonPulseInput paInput;
   AudioProcessor audioProcessor;
 
+  // The single video buffer...
+  GL::Buffer buffer;
+
   // Main thread IO Event loop
   boost::asio::io_service io_service;
 

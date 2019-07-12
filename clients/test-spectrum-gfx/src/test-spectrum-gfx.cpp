@@ -215,11 +215,10 @@ void NeonSpectrumGFX::updateRenderData() {
 void NeonSpectrumGFX::updateData() {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
-  GL::Buffer buffer;
   buffer.setData(spectrumData);
   _mesh.setPrimitive(Magnum::GL::MeshPrimitive::TriangleFan);
   _mesh.setCount(NUM_SLICES + 1)
-      .addVertexBuffer(std::move(buffer), 0, Shaders::Vector2D::Position{},
+      .addVertexBuffer(buffer, 0, Shaders::Vector2D::Position{},
                        Shaders::Vector2D::TextureCoordinates{});
 }
 
