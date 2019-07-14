@@ -10,7 +10,7 @@ static std::string spectrumUUID;
 
 AudioProcessor::AudioProcessor()
     : handle("test-pipeline"), defaultSampleRate(44100), defaultChannels(1),
-      defaultWidth(16), defaultDurationMs(50),
+      defaultWidth(16), defaultDurationMs(500),
       audioProcessorThreadRunning(true),
       logger("AudioProcessor", DebugLogger::DebugColor::COLOR_RED, false) {
   audioProcessorThread = std::thread(&AudioProcessor::audioProcessorLoop, this);

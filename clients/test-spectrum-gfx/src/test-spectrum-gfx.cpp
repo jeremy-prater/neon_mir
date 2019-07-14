@@ -144,7 +144,9 @@ float *NeonSpectrumGFX::spectrumDataMeanGetSlice() const noexcept {
 }
 void NeonSpectrumGFX::spectrumDataMeanFillSlice(uint32_t index, float data) {
   // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
-  spectrumDataMean[spectrumDataMeanHead][index] = data;
+  
+  const float scale = 1.0f;
+  spectrumDataMean[spectrumDataMeanHead][index] = data * scale;
 }
 
 void NeonSpectrumGFX::spectrumDataMeanPushSlice() noexcept {
