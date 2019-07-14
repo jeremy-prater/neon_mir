@@ -235,8 +235,10 @@ void NeonEssentiaSession::getSpectrumData(
     ::neon::session::Controller::GetSpectrumDataResults::Builder &results) {
   static essentia::Real lastChunk[256];
 
+  // Maybe lock pool here with mutex?
   std::scoped_lock<std::mutex> lock(poolMutex);
 
+  // Things that are important
   const std::string spectrumKey = "spectrum";
 
   memset(lastChunk, 0, sizeof(lastChunk));
@@ -250,12 +252,16 @@ void NeonEssentiaSession::getSpectrumData(
     // O(n^2) :(
 
     for (auto chunk : dataChunks) {
-      for (ssize_t index = 0; index < chunk.size(); index++) {
+      const size_t depth = chunk.size();
+      for (size_t index = 0; index < depth; index++) {
         lastChunk[index] += chunk[index];
       }
     }
 
+    // TODO: This could be bad multi threading...
+    // Whenwe go out of scope, the mutex is released...
     results.getData().setRaw(kj::arrayPtr(lastChunk, 256));
     pool.clear();
+
   }
 }
