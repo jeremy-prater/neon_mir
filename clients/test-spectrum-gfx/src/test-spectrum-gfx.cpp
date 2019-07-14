@@ -122,13 +122,13 @@ inline bool NeonSpectrumGFX::spectrumDataMeanEmpty() const noexcept {
   // Lock access to the circular buffer
   std::scoped_lock<std::mutex> lock(audioFrameMutex);
   bool result = (spectrumDataMeanTail == spectrumDataMeanHead);
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s %d %d = %d",
-                  __func__, spectrumDataMeanHead, spectrumDataMeanTail, result);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s %d %d = %d",
+  //                 __func__, spectrumDataMeanHead, spectrumDataMeanTail, result);
   return result;
 }
 
 float *NeonSpectrumGFX::spectrumDataMeanGetSlice() const noexcept {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
   // Attempt to move the tail up
   if (spectrumDataMeanEmpty()) {
@@ -150,7 +150,7 @@ void NeonSpectrumGFX::spectrumDataMeanFillSlice(uint32_t index, float data) {
 }
 
 void NeonSpectrumGFX::spectrumDataMeanPushSlice() noexcept {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
   // Lock access to the circular buffer
   std::scoped_lock<std::mutex> lock(audioFrameMutex);
@@ -167,7 +167,7 @@ void NeonSpectrumGFX::spectrumDataMeanPushSlice() noexcept {
 }
 
 void NeonSpectrumGFX::updateRenderData() {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
   // audioFrames should be a vector of frames...
   // We'll pop one from the stack and render it into the triangle...
@@ -220,7 +220,7 @@ void NeonSpectrumGFX::updateRenderData() {
 }
 
 void NeonSpectrumGFX::updateData() {
-  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
 
   buffer.setData(spectrumData);
   _mesh.setPrimitive(Magnum::GL::MeshPrimitive::TriangleFan);
@@ -233,7 +233,7 @@ void NeonSpectrumGFX::addSlices(std::vector<float> &newData) noexcept {}
 
 void NeonSpectrumGFX::drawEvent() {
 
-  Debug{} << __func__;
+  // Debug{} << __func__;
 
   GL::defaultFramebuffer.clear(GL::FramebufferClear::Color);
 

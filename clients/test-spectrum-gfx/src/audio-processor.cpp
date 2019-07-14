@@ -99,7 +99,7 @@ void AudioProcessor::audioProcessorLoop() {
     }
 
     {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum Data");
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum Data");
 
       auto request = controllerServer.getSpectrumDataRequest();
       request.setUuid(spectrumUUID);
@@ -116,8 +116,8 @@ void AudioProcessor::audioProcessorLoop() {
       int index = 0;
       auto instance = NeonSpectrumGFX::getInstance();
       while (index < count) {
-        logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Frame %d ==> %d",
-                        index, count);
+        // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Frame %d ==> %d",
+        //                 index, count);
         int indexOffset = index * NUM_SLICES;
         for (int sliceIndex = 0; sliceIndex < NUM_SLICES; sliceIndex++) {
           instance->spectrumDataMeanFillSlice(sliceIndex,
