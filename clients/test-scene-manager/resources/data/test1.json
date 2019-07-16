@@ -1,0 +1,23 @@
+{
+    "num_slices": 256,
+    "events": {
+        "bass hit": {
+            "min": 300,
+            "max": 500,
+            "threshold": 1,
+            "cooldown": 1000
+        },
+        "mid hit": {
+            "min": 1000,
+            "max": 2000,
+            "threshold": 1,
+            "cooldown": 700
+        },
+        "high hit": {
+            "min": 3500,
+            "max": 5000,
+            "threshold": 1,
+            "cooldown": 400
+        }
+    }
+}

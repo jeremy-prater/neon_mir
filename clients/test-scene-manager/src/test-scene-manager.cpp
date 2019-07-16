@@ -12,7 +12,7 @@ NeonSpectrumGFX *NeonSpectrumGFX::getInstance() { return instance; }
 
 NeonSpectrumGFX::NeonSpectrumGFX(const Arguments &arguments)
     : Platform::Application{arguments, Configuration{}.setTitle(
-                                           "Neon MIR Graphics Test 1")},
+                                           "Neon MIR Scene Test 1")},
       spectrumDataMeanHead(0), spectrumDataMeanTail(RING_SIZE - 1),
       shutdown(false),
       logger("RenderPipe", DebugLogger::DebugColor::COLOR_GREEN, false) {
@@ -36,10 +36,7 @@ NeonSpectrumGFX::NeonSpectrumGFX(const Arguments &arguments)
                   "Booting on OpenGL %d using %s", version,
                   GL::Context::current().rendererString().c_str());
 
-  sceneManager.updateSpectrumConfig(
-      "{\"bass hit\":{\"min\":300,\"max\":500,\"threshold\":1},\"mid "
-      "hit\":{\"min\":1000,\"max\":2000,\"threshold\":1},\"high "
-      "hit\":{\"min\":3500,\"max\":5000,\"threshold\":1}}");
+  sceneManager.updateSpectrumConfig(rs.get("test1").c_str());
   initalizeRenderData();
 
   audioWorker = std::thread([this] {

@@ -146,8 +146,8 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
   auto spectrum = algorithmFactory.create("Spectrum");
   auto logSpectrum =
       algorithmFactory.create("LogSpectrum", "frameSize", frameSize);
-  auto nnls = algorithmFactory.create("NNLSChroma", "frameSize", frameSize,
-                                      "sampleRate", newSampleRate);
+  // auto nnls = algorithmFactory.create("NNLSChroma", "frameSize", frameSize,
+  //                                     "sampleRate", newSampleRate);
 
   essentia::streaming::Algorithm *root = nullptr;
 
@@ -262,6 +262,5 @@ void NeonEssentiaSession::getSpectrumData(
     // Whenwe go out of scope, the mutex is released...
     results.getData().setRaw(kj::arrayPtr(lastChunk, 256));
     pool.clear();
-
   }
 }
