@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+set_and_check(scenemanager_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
+# set_and_check(scenemanager_SYSCONFIG_DIR "@PACKAGE_SYSCONFIG_INSTALL_DIR@")
+
+set(scenemanager_LIBRARIES "scenemanager")
+
+check_required_components(scenemanager)

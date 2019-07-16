@@ -2,7 +2,7 @@
 
 CMAKE_EXTRA="-DCMAKE_INSTALL_PREFIX:PATH=/usr"
 
-LIBS="debuglogger pulse-audio-input"
+LIBS="debuglogger pulse-audio-input scene-manager"
 
 for lib in ${LIBS}
 do
