@@ -251,10 +251,11 @@ void NeonEssentiaSession::getSpectrumData(
     // Aggregrate the frame into one...
     // O(n^2) :(
 
+    auto numChunks = dataChunks.size();
     for (auto chunk : dataChunks) {
       const size_t depth = chunk.size();
       for (size_t index = 0; index < depth; index++) {
-        lastChunk[index] += chunk[index];
+        lastChunk[index] += chunk[index] / numChunks;
       }
     }
 

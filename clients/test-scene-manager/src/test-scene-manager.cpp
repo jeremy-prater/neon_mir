@@ -11,8 +11,8 @@ NeonSpectrumGFX *NeonSpectrumGFX::instance = nullptr;
 NeonSpectrumGFX *NeonSpectrumGFX::getInstance() { return instance; }
 
 NeonSpectrumGFX::NeonSpectrumGFX(const Arguments &arguments)
-    : Platform::Application{arguments, Configuration{}.setTitle(
-                                           "Neon MIR Scene Test 1")},
+    : Platform::Application{arguments,
+                            Configuration{}.setTitle("Neon MIR Scene Test 1")},
       spectrumDataMeanHead(0), spectrumDataMeanTail(RING_SIZE - 1),
       shutdown(false),
       logger("RenderPipe", DebugLogger::DebugColor::COLOR_GREEN, false) {
@@ -178,6 +178,7 @@ void NeonSpectrumGFX::updateRenderData() {
     // Implement a performance timer here...
 
     auto audioData = spectrumDataMeanGetSlice();
+    sceneManager.updateSpectrumData(audioData);
 
     if (audioData == nullptr)
       return;
