@@ -107,7 +107,8 @@ AlgorithmStatus BoostRingBufferInput::process() {
     /// << " : a1 : " << array_two.second << std::endl;
 
     memcpy(dataStart, array_one.first, array_one.second);
-    memcpy(dataStart + array_one.second, array_two.first, array_two.second);
+    memcpy(dataStart + (array_one.second / sizeof(array_one.first)),
+           array_two.first, array_two.second);
 
     // buffer->clear();
   }
