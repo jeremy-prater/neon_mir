@@ -218,6 +218,10 @@ void NeonEssentiaSession::createSpectrumPipeline(uint32_t newSampleRate,
       try {
         std::scoped_lock<std::mutex> lock(poolMutex);
         audioNetwork->run();
+        // algorithmMap["frameCutter"]->reset();
+        // algorithmMap["windowing"]->reset();
+        // algorithmMap["spectrum"]->reset();
+        algorithmMap["logSpectrum"]->reset();
       } catch (...) {
         logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
                         "Spectrum Failed!!");
@@ -260,7 +264,7 @@ void NeonEssentiaSession::getSpectrumData(
     }
 
     // TODO: This could be bad multi threading...
-    // Whenwe go out of scope, the mutex is released...
+    // When we go out of scope, the mutex is released...
     results.getData().setRaw(kj::arrayPtr(lastChunk, 256));
     pool.clear();
   }

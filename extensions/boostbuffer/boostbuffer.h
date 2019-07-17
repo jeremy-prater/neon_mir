@@ -55,7 +55,7 @@ public:
         // std::cout << "Added Audio Count " << count++ << "value ==> " << value
         //           << std::endl;
       }
-      buffer->push_front(value);
+      buffer->push_back(value);
       current++;
     }
     // std::cout << "Added Audio count ==> " << count << std::endl;
