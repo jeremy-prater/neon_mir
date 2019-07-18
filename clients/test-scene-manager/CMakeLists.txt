@@ -32,8 +32,8 @@ include_directories("${RAPIDJSON_INCLUDE_DIRS}")
 
 set_directory_properties(PROPERTIES CORRADE_USE_PEDANTIC_FLAGS ON)
 
-corrade_add_resource(Resources_data resources/test-gfx-data.conf)
-corrade_add_resource(Resources_shaders resources/test-gfx-shaders.conf)
+corrade_add_resource(Resources_data ../resources/test-gfx-data.conf)
+corrade_add_resource(Resources_shaders ../resources/test-gfx-shaders.conf)
 
 # Source Files GFX
 set(NEON_GFX_SRC
