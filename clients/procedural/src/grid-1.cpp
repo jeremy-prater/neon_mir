@@ -26,6 +26,4 @@ NeonTestShader1::NeonTestShader1() {
   CORRADE_INTERNAL_ASSERT_OUTPUT(link());
 
   _colorUniform = uniformLocation("color");
-
-  setUniform(uniformLocation("textureData"), TextureLayer);
 }

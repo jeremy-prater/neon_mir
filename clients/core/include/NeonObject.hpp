@@ -11,21 +11,23 @@ public:
   NeonRenderable();
   ~NeonRenderable();
 
-  void render(double dTime);
+  void render(double dTime) = 0;
 
 private:
-  Magnum::GL::Shader vert{Magnum::GL::Version::GL330,
-                          Magnum::GL::Shader::Type::Vertex};
-  Magnum::GL::Shader frag{Magnum::GL::Version::GL330,
-                          Magnum::GL::Shader::Type::Fragment};
 };
 
 class NeonObject {
 public:
-  NeonObject(const std::string name) {}
+  NeonObject() {}
   ~NeonObject() {}
 
-  void render(double dTime);
+  void addRenderable();
+
+  void render(double dTime) {
+    for (auto &renderable : renderables) {
+      renderable.render(dTime);
+    }
+  }
 
 private:
   std::vector<NeonRenderable> renderables;

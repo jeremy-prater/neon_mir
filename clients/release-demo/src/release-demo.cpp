@@ -98,6 +98,17 @@ void NeonReleaseDemo::drawEvent() {
   GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |
                                GL::FramebufferClear::Depth);
 
+  static auto lastTime = std::chrono::steady_clock::now();
+  auto curTime = std::chrono::steady_clock::now();
+  auto dTime =
+      std::chrono::duration_cast<std::chrono::milliseconds>(curTime - lastTime)
+          .count();
+  lastTime = curTime;
+
+  for (auto &object : renderObjects) {
+    object.render(dTime);
+  }
+
   swapBuffers();
 }
 

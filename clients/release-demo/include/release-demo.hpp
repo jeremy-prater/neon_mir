@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NeonObject.hpp"
 #include "audio-processor.hpp"
 #include "capnp/list.h"
 #include "debuglogger.hpp"
@@ -59,7 +60,8 @@ private:
   Matrix4 projection;
 
   static NeonReleaseDemo *instance;
-  TriangleVertex spectrumData[NUM_SLICES + 1];
+
+  std::vector<NeonObject> renderObjects;
 
   // Generic ring buffer function
   inline void spectrumDataCheckSlice(uint32_t &position) const;
