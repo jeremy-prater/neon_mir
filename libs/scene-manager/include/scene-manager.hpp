@@ -27,7 +27,8 @@ public:
   void updateSpectrumData(const float *data);
 
   boost::signals2::signal<void(std::string name, const double frequency,
-                               const double strength)>
+                               uint32_t position, uint32_t size,
+                               const float *data)>
       eventFired;
 
 private:

@@ -93,13 +93,15 @@ void SceneManager::updateSpectrumData(const float *data) {
       event.cooldownTimer = event.cooldown;
       auto fFreq =
           pow(10, static_cast<double>(maxBin) / logCoeff) + frequencyOffset;
+      auto position = maxBin - event.fMinBin;
+      auto size = event.fMaxBin - event.fMinBin;
 
       logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
-                      "Frequency Event Fired [%s] [%f] > [%f] @ [%f]",
+                      "Frequency Event Fired [%s] [%f] > [%f] @ [%f][%d] [%d]",
                       event.fEventName.c_str(), data[maxBin], event.threshold,
-                      fFreq);
+                      fFreq, position, size);
 
-      eventFired(event.fEventName, fFreq, data[maxBin]);
+      eventFired(event.fEventName, fFreq, position, size, &data[event.fMinBin]);
     }
   }
 }
