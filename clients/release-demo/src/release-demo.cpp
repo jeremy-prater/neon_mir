@@ -32,8 +32,11 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
   GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 
-  projection = Matrix4::perspectiveProjection(
-      35.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f);
+  projection =
+      Matrix4::perspectiveProjection(
+          35.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f) *
+      Matrix4::lookAt(Vector3{0, 0, 10}, Vector3{0, 0, 0}, Vector3{1, 0, 0})
+          .invertedRigid();
 
   auto version = GL::Context::current().version();
 
@@ -94,6 +97,8 @@ void NeonReleaseDemo::initalizeRenderData() {
 }
 
 void NeonReleaseDemo::updateRenderData() { drawEvent(); }
+
+Matrix4 *NeonReleaseDemo::GetProjection() { return &projection; }
 
 void NeonReleaseDemo::drawEvent() {
   GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |

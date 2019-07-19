@@ -1,10 +1,13 @@
 #include "grid-1.hpp"
 
+#include "release-demo.hpp"
 #include <Corrade/Containers/Reference.h>
 #include <Corrade/Utility/Resource.h>
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/Primitives/Plane.h>
+#include <Magnum/Trade/MeshData3D.h>
 #include <rapidjson/document.h>
 
 NeonGrid1::NeonGrid1()
@@ -15,7 +18,9 @@ NeonGrid1::NeonGrid1()
 NeonGrid1::~NeonGrid1() {}
 
 NeonGridRenderable1::NeonGridRenderable1()
-    : logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
+    : planeData(Magnum::Primitives::planeSolid(
+          Magnum::Primitives::PlaneTextureCoords::Generate)),
+      logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
              false) {
   MAGNUM_ASSERT_GL_VERSION_SUPPORTED(Magnum::GL::Version::GL330);
   const Magnum::Utility::Resource rs{"shaders"};
@@ -43,10 +48,23 @@ NeonGridRenderable1::NeonGridRenderable1()
                                 accentColor2Json["b"].GetDouble());
 
   numSlices = gridConfigJson["numSlices"].GetUint();
+
+  vertexBuffer.setData(Magnum::MeshTools::interleave(
+      planeData.positions(0), planeData.textureCoords2D(0)));
+
+  mesh.setPrimitive(planeData.primitive())
+      .setCount(planeData.positions(0).size())
+      .addVertexBuffer(vertexBuffer, 0, Magnum::Shaders::Flat3D ::Position{});
+
+  projection = NeonReleaseDemo::getInstance()->GetProjection();
 }
+
 NeonGridRenderable1::~NeonGridRenderable1() {}
 
 void NeonGridRenderable1::render(double dTime) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "NeonGridRenderable1 - Render [%f]", dTime);
+  shader.setColor(baseColor).setTransformationProjectionMatrix(*projection *
+                                                               *transform);
+  mesh.draw(shader);
 }

@@ -49,6 +49,8 @@ public:
 
   SceneManager sceneManager;
 
+  Matrix4 *GetProjection();
+
 private:
   Matrix4 projection;
 

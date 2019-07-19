@@ -7,22 +7,31 @@
 #include <string>
 #include <vector>
 
+using namespace Magnum::Math::Literals;
+
 class NeonRenderable {
 public:
   NeonRenderable() {}
   ~NeonRenderable() {}
 
+  void SetTransform(Magnum::Matrix4 *newTransform) { transform = newTransform; }
+
   virtual void render(double dTime) = 0;
 
-private:
+protected:
+  Magnum::Matrix4 *transform;
+  Magnum::Matrix4 *projection;
 };
 
 class NeonObject {
 public:
-  NeonObject() {}
+  NeonObject() {
+    transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-5.0f));
+  }
   ~NeonObject() {}
 
   void addRenderable(NeonRenderable *newRenderable) {
+    newRenderable->SetTransform(GetTransform());
     renderables.push_back(newRenderable);
   }
 
@@ -32,7 +41,9 @@ public:
     }
   }
 
-private:
+  Magnum::Matrix4 *GetTransform() { return &transform; }
+
+protected:
   std::vector<NeonRenderable *> renderables;
   Magnum::Matrix4 transform;
 };

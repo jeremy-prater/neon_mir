@@ -17,7 +17,7 @@ find_package(pulse-audio-input)
 find_package(scene-manager)
 find_package(RapidJSON)
 
-find_package(Magnum REQUIRED GL Shaders Sdl2Application)
+find_package(Magnum REQUIRED GL Shaders Sdl2Application MeshTools Primitives)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 find_package(Corrade REQUIRED Utility)
 
@@ -74,6 +74,8 @@ target_link_libraries(${PROJ_NAME}
   Magnum::GL
   Magnum::Magnum
   Magnum::Shaders
+  Magnum::MeshTools
+  Magnum::Primitives
   Corrade::Utility)
 
 
