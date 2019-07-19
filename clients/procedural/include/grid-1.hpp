@@ -42,6 +42,8 @@ public:
   NeonGrid1();
   ~NeonGrid1();
 
+  virtual void render(double dTime) override;
+
 private:
   NeonGridRenderable1 grid1;
   DebugLogger logger;

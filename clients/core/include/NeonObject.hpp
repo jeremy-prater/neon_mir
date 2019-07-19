@@ -25,9 +25,7 @@ protected:
 
 class NeonObject {
 public:
-  NeonObject() {
-    transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-5.0f));
-  }
+  NeonObject() {}
   ~NeonObject() {}
 
   void addRenderable(NeonRenderable *newRenderable) {
@@ -35,7 +33,7 @@ public:
     renderables.push_back(newRenderable);
   }
 
-  void render(double dTime) {
+  virtual void render(double dTime) {
     for (auto &renderable : renderables) {
       renderable->render(dTime);
     }

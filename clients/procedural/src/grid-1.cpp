@@ -6,16 +6,27 @@
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
+#include <Magnum/Magnum.h>
 #include <Magnum/Primitives/Plane.h>
 #include <Magnum/Trade/MeshData3D.h>
 #include <rapidjson/document.h>
 
+using namespace Magnum::Math::Literals;
+
 NeonGrid1::NeonGrid1()
     : logger("NeonGrid1", DebugLogger::DebugColor::COLOR_CYAN, false) {
   addRenderable(&grid1);
+
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created NeonGrid1");
+  transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-5));
 }
 NeonGrid1::~NeonGrid1() {}
+
+void NeonGrid1::render(double dTime) {
+  transform = transform * Magnum::Matrix4::rotationZ(5.0_degf);
+
+  NeonObject::render(dTime);
+}
 
 NeonGridRenderable1::NeonGridRenderable1()
     : planeData(Magnum::Primitives::planeSolid(
@@ -49,12 +60,13 @@ NeonGridRenderable1::NeonGridRenderable1()
 
   numSlices = gridConfigJson["numSlices"].GetUint();
 
-  vertexBuffer.setData(Magnum::MeshTools::interleave(
-      planeData.positions(0), planeData.textureCoords2D(0)));
+  vertexBuffer.setData(planeData.positions(0));
+  // Magnum::MeshTools::interleave(planeData.positions(0),
+  // planeData.textureCoords2D(0)));
 
   mesh.setPrimitive(planeData.primitive())
       .setCount(planeData.positions(0).size())
-      .addVertexBuffer(vertexBuffer, 0, Magnum::Shaders::Flat3D ::Position{});
+      .addVertexBuffer(vertexBuffer, 0, Magnum::Shaders::Flat3D::Position{});
 
   projection = NeonReleaseDemo::getInstance()->GetProjection();
 }
