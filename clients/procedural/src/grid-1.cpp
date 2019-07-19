@@ -5,25 +5,48 @@
 #include <Magnum/GL/Context.h>
 #include <Magnum/GL/Shader.h>
 #include <Magnum/GL/Version.h>
+#include <rapidjson/document.h>
 
-NeonTestShader1::NeonTestShader1() {
+NeonGrid1::NeonGrid1()
+    : logger("NeonGrid1", DebugLogger::DebugColor::COLOR_CYAN, false) {
+  addRenderable(&grid1);
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created NeonGrid1");
+}
+NeonGrid1::~NeonGrid1() {}
+
+NeonGridRenderable1::NeonGridRenderable1()
+    : logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
+             false) {
   MAGNUM_ASSERT_GL_VERSION_SUPPORTED(Magnum::GL::Version::GL330);
-
   const Magnum::Utility::Resource rs{"shaders"};
 
-  Magnum::GL::Shader vert{Magnum::GL::Version::GL330,
-                          Magnum::GL::Shader::Type::Vertex};
-  Magnum::GL::Shader frag{Magnum::GL::Version::GL330,
-                          Magnum::GL::Shader::Type::Fragment};
+  rapidjson::Document gridConfigJson;
+  auto jsonString = rs.get("grid1.json");
+  gridConfigJson.Parse(jsonString.c_str());
 
-  vert.addSource(rs.get("test_vs"));
-  frag.addSource(rs.get("test_ps"));
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "Created NeonGridRenderable1");
 
-  CORRADE_INTERNAL_ASSERT_OUTPUT(Magnum::GL::Shader::compile({vert, frag}));
+  auto baseColorJson = gridConfigJson["baseColor"].GetObject();
+  baseColor = Magnum::Color3(baseColorJson["r"].GetDouble(),
+                             baseColorJson["g"].GetDouble(),
+                             baseColorJson["b"].GetDouble());
 
-  attachShaders({vert, frag});
+  auto accentColor1Json = gridConfigJson["accentColor1"].GetObject();
+  accentColor1 = Magnum::Color3(accentColor1Json["r"].GetDouble(),
+                                accentColor1Json["g"].GetDouble(),
+                                accentColor1Json["b"].GetDouble());
 
-  CORRADE_INTERNAL_ASSERT_OUTPUT(link());
+  auto accentColor2Json = gridConfigJson["accentColor2"].GetObject();
+  accentColor2 = Magnum::Color3(accentColor2Json["r"].GetDouble(),
+                                accentColor2Json["g"].GetDouble(),
+                                accentColor2Json["b"].GetDouble());
 
-  _colorUniform = uniformLocation("color");
+  numSlices = gridConfigJson["numSlices"].GetUint();
+}
+NeonGridRenderable1::~NeonGridRenderable1() {}
+
+void NeonGridRenderable1::render(double dTime) {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
+                  "NeonGridRenderable1 - Render [%f]", dTime);
 }

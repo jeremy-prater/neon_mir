@@ -28,16 +28,12 @@
 #include <deque>
 #include <scene-manager.hpp>
 #include <unistd.h>
+#include <unordered_map>
 
 #define NUM_SLICES 256
 #define RING_SIZE 200
 
 using namespace Magnum;
-
-struct TriangleVertex {
-  Vector2 position;
-  Vector2 textureUV;
-};
 
 class NeonReleaseDemo : public Platform::Application {
 public:
@@ -54,14 +50,11 @@ public:
   SceneManager sceneManager;
 
 private:
-  const Vector2 start = {-0.9f, -0.75f};
-  const Vector2 end = {0.5f, 0.9f};
-
   Matrix4 projection;
 
   static NeonReleaseDemo *instance;
 
-  std::vector<NeonObject> renderObjects;
+  std::unordered_map<std::string, NeonObject *> renderObjects;
 
   // Generic ring buffer function
   inline void spectrumDataCheckSlice(uint32_t &position) const;
@@ -89,12 +82,6 @@ private:
 
   // Main thread IO Event loop
   boost::asio::io_service io_service;
-
-  // This should be handled by a resource class
-  // This would make better visualizations possible intead of hard coding
-  // visualization objects
-  GL::Mesh _mesh;
-  NeonTestShader1 _shader;
 
   // For this application to exit correctly. All threads must cleanly exit when
   // shutdown==true

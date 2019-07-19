@@ -89,6 +89,7 @@ NeonReleaseDemo::~NeonReleaseDemo() {
 
 void NeonReleaseDemo::initalizeRenderData() {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
+  renderObjects["grid1"] = new NeonGrid1();
   drawEvent();
 }
 
@@ -105,8 +106,8 @@ void NeonReleaseDemo::drawEvent() {
           .count();
   lastTime = curTime;
 
-  for (auto &object : renderObjects) {
-    object.render(dTime);
+  for (auto object : renderObjects) {
+    object.second->render(dTime);
   }
 
   swapBuffers();
