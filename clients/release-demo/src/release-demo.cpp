@@ -77,7 +77,7 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
     // Just for fun...
     updateRenderData();
 
-    usleep(50 * 1000); // 20 FPS @ 50 ms/frame
+    // usleep(50 * 1000); // 20 FPS @ 50 ms/frame
   }
 }
 
