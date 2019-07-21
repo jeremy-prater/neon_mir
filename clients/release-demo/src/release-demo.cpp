@@ -34,9 +34,9 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
 
   projection =
       Matrix4::perspectiveProjection(
-          35.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 100.0f) *
-      Matrix4::lookAt(Vector3{0, 0, 10}, Vector3{0, 0, 0}, Vector3{1, 0, 0})
-          .invertedRigid();
+          90.0_degf, Vector2{windowSize()}.aspectRatio(), 0.01f, 1000.0f) *
+      (Matrix4::lookAt(Vector3{-10, 0, 0}, Vector3{0, 0, 0}, Vector3{0, 0, 1})
+           .invertedRigid());
 
   auto version = GL::Context::current().version();
 

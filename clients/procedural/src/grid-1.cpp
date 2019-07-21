@@ -16,13 +16,12 @@ using namespace Magnum::Math::Literals;
 NeonGrid1::NeonGrid1()
     : logger("NeonGrid1", DebugLogger::DebugColor::COLOR_CYAN, false) {
   addRenderable(&grid1);
-  const uint32_t size = 8;
+  const uint32_t size = 1000;
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created NeonGrid1");
-  transform =
-      Magnum::Matrix4::translation(Magnum::Vector3::xAxis(-20)) +
-      Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-(size / 2))) *
-      Magnum::Matrix4::scaling(Vector3{size, size, size}) *
-      Magnum::Matrix4::rotationY(90.0_degf);
+  transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-100)) *
+              Magnum::Matrix4::translation(Magnum::Vector3::xAxis(size / 2)) *
+              Magnum::Matrix4::scaling(Vector3{size, size, size});
+  // Magnum::Matrix4::rotationY(90.0_degf);
 }
 NeonGrid1::~NeonGrid1() {}
 
