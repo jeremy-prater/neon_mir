@@ -28,7 +28,7 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Welcome !! ==> %s",
                   rs.get("motd").c_str());
 
-  GL::Renderer::setClearColor(0xa5c9ea_rgbf);
+  GL::Renderer::setClearColor(0x151525_rgbf);
   GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
   GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
 

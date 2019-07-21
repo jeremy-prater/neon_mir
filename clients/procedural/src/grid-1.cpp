@@ -16,11 +16,10 @@ using namespace Magnum::Math::Literals;
 NeonGrid1::NeonGrid1()
     : logger("NeonGrid1", DebugLogger::DebugColor::COLOR_CYAN, false) {
   addRenderable(&grid1);
-  const uint32_t size = 1000;
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created NeonGrid1");
-  transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-100)) *
-              Magnum::Matrix4::translation(Magnum::Vector3::xAxis(size / 2)) *
-              Magnum::Matrix4::scaling(Vector3{size, size, size});
+  // transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-100)) *
+  //             Magnum::Matrix4::translation(Magnum::Vector3::xAxis(size / 2))
+  //             * Magnum::Matrix4::scaling(Vector3{size, size, size});
   // Magnum::Matrix4::rotationY(90.0_degf);
 }
 NeonGrid1::~NeonGrid1() {}
@@ -37,11 +36,12 @@ struct TriangleVertex {
 };
 
 const float planeSize = 1000.0f;
+const float zDepth = -100;
 
-const TriangleVertex data[]{{{planeSize, planeSize, 0}, {1.0f, 1.0f}},
-                            {{-planeSize, planeSize, 0}, {0.0f, 1.0f}},
-                            {{planeSize, -planeSize, 0}, {1.0f, 0.0f}},
-                            {{-planeSize, -planeSize, 0}, {0.0f, 0.0f}}};
+const TriangleVertex data[]{{{planeSize, planeSize, zDepth}, {1.0f, 1.0f}},
+                            {{0, planeSize, zDepth}, {0.0f, 1.0f}},
+                            {{planeSize, -planeSize, zDepth}, {1.0f, 0.0f}},
+                            {{0, -planeSize, zDepth}, {0.0f, 0.0f}}};
 
 NeonGridRenderable1::NeonGridRenderable1()
     : logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
