@@ -90,8 +90,13 @@ NeonGridRenderable1::~NeonGridRenderable1() {}
 void NeonGridRenderable1::render(double dTime) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "NeonGridRenderable1 - Render [%f]", dTime);
-  shader.setBaseColor(baseColor)
-      .setViewProjectionMatrix(*projection)
-      .setTransformationMatrix(*transform);
+
+  shader.setViewProjectionMatrix(*projection)
+      .setTransformationMatrix(*transform)
+      .setBaseColor(baseColor)
+      .setAccent1Color(accentColor1)
+      .setAccent2Color(accentColor2)
+      .setNumSlices(numSlices);
+
   mesh.draw(shader);
 }
