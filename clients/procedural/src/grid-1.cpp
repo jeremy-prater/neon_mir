@@ -31,10 +31,20 @@ void NeonGrid1::render(double dTime) {
   NeonObject::render(dTime);
 }
 
+struct TriangleVertex {
+  Vector3 position;
+  Vector2 textCoord;
+};
+
+const float planeSize = 1000.0f;
+
+const TriangleVertex data[]{{{planeSize, planeSize, 0}, {1.0f, 1.0f}},
+                            {{-planeSize, planeSize, 0}, {0.0f, 1.0f}},
+                            {{planeSize, -planeSize, 0}, {1.0f, 0.0f}},
+                            {{-planeSize, -planeSize, 0}, {0.0f, 0.0f}}};
+
 NeonGridRenderable1::NeonGridRenderable1()
-    : planeData(Magnum::Primitives::planeSolid(
-          Magnum::Primitives::PlaneTextureCoords::Generate)),
-      logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
+    : logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
              false) {
   MAGNUM_ASSERT_GL_VERSION_SUPPORTED(Magnum::GL::Version::GL330);
   const Magnum::Utility::Resource rs{"shaders"};
@@ -63,13 +73,14 @@ NeonGridRenderable1::NeonGridRenderable1()
 
   numSlices = gridConfigJson["numSlices"].GetUint();
 
-  vertexBuffer.setData(planeData.positions(0));
+  vertexBuffer.setData(data);
   // Magnum::MeshTools::interleave(planeData.positions(0),
   // planeData.textureCoords2D(0)));
 
-  mesh.setPrimitive(planeData.primitive())
-      .setCount(planeData.positions(0).size())
-      .addVertexBuffer(vertexBuffer, 0, Magnum::Shaders::Flat3D::Position{});
+  mesh.setPrimitive(Magnum::GL::MeshPrimitive::TriangleStrip)
+      .setCount(4)
+      .addVertexBuffer(vertexBuffer, 0, GridShader1::Position{},
+                       GridShader1::TextureCoordinates{});
 
   projection = NeonReleaseDemo::getInstance()->GetProjection();
 }
@@ -79,7 +90,8 @@ NeonGridRenderable1::~NeonGridRenderable1() {}
 void NeonGridRenderable1::render(double dTime) {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "NeonGridRenderable1 - Render [%f]", dTime);
-  shader.setColor(baseColor).setTransformationProjectionMatrix(*projection *
-                                                               *transform);
+  shader.setBaseColor(baseColor)
+      .setViewProjectionMatrix(*projection)
+      .setTransformationMatrix(*transform);
   mesh.draw(shader);
 }

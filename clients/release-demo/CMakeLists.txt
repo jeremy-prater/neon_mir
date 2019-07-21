@@ -41,6 +41,7 @@ set(NEON_GFX_SRC
   ${PROJECT_SOURCE_DIR}/src/release-demo.cpp
   ${PROJECT_SOURCE_DIR}/src/spectrum-ring-buffer.cpp
   ${PROJECT_SOURCE_DIR}/../procedural/src/grid-1.cpp
+  ${PROJECT_SOURCE_DIR}/../procedural/src/grid-shader-1.cpp
   neon.session.capnp.c++
 )
 

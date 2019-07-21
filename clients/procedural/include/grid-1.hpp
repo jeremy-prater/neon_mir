@@ -2,6 +2,7 @@
 
 #include "NeonObject.hpp"
 #include "debuglogger.hpp"
+#include "grid-shader-1.hpp"
 #include <Magnum/GL/AbstractShaderProgram.h>
 #include <Magnum/GL/Buffer.h>
 #include <Magnum/GL/DefaultFramebuffer.h>
@@ -29,10 +30,9 @@ private:
   Magnum::Color3 accentColor2;
   uint32_t numSlices;
 
-  Magnum::Trade::MeshData3D planeData;
   Magnum::GL::Buffer vertexBuffer;
   Magnum::GL::Mesh mesh;
-  Magnum::Shaders::Flat3D shader;
+  GridShader1 shader;
 
   DebugLogger logger;
 };
