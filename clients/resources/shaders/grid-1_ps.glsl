@@ -11,8 +11,19 @@ in vec2 interpolatedTextureCoordinates;
 out vec4 fragmentColor;
 
 void main() {
-  fragmentColor.b = color.b;
-  fragmentColor.r = color.r * interpolatedTextureCoordinates.x;
-  fragmentColor.g = color.g * interpolatedTextureCoordinates.y;
-  fragmentColor.a = 1.0;
+  vec4 outColor = vec4(0.0, 0.0, 0.0, 0.0);
+
+  float rate = 0.15;
+
+  float xSlice =
+      pow(abs(fract(interpolatedTextureCoordinates.x * numSlices / 15) - 0.5),
+          rate);
+  float ySlice =
+      pow(abs(fract(interpolatedTextureCoordinates.y * numSlices / 15) - 0.5),
+          rate);
+
+  outColor = max(mix(vec4(accent1Color, 1.0), outColor, ySlice),
+                 mix(vec4(accent2Color, 1.0), outColor, xSlice));
+
+  fragmentColor = outColor;
 }
