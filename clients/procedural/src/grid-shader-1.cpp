@@ -32,4 +32,5 @@ GridShader1::GridShader1() {
   accent2ColorUniform = uniformLocation("accent2Color");
   numSlicesUniform = uniformLocation("numSlices");
   thetaUniform = uniformLocation("theta");
+  sceneMoodUniform = uniformLocation("sceneMood");
 }

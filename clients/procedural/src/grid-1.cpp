@@ -108,7 +108,8 @@ void NeonGridRenderable1::render(double dTime) {
       .setAccent1Color(accentColor1)
       .setAccent2Color(accentColor2)
       .setNumSlices(numSlices)
-      .setTheta(theta / 1000);
+      .setTheta(theta / 1000)
+      .setsceneMood(theta / 1000);
 
   mesh.draw(shader);
 }

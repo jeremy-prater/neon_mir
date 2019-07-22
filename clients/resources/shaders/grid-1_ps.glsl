@@ -3,9 +3,7 @@ uniform vec3 accent1Color;
 uniform vec3 accent2Color;
 uniform uint numSlices;
 uniform float theta;
-
-uniform vec3 color = vec3(1., 1., 1.);
-// uniform sampler2D textureData;
+uniform float sceneMood;
 
 in vec2 interpolatedTextureCoordinates;
 
@@ -14,13 +12,14 @@ out vec4 fragmentColor;
 void main() {
   vec4 outColor = vec4(0., 0., 0., 0.);
 
-  // float lineRate = .25; // V1 - Max
-  float lineRate = .1; // V2 - Avg
-  // float lineRate = 1.2; // V3 - Min
+  float lineRate = mix(0.25, // V1 - Max
+                             // 0.10,  // V2 - Avg
+                       1.20, // V3 - Min
+                       sceneMood);
 
-  // float widthScale = 10; // V1 - Max
-  float widthScale = 10; // V2 - Avg
-  // float widthScale = 30; // V3 - Min
+  float widthScale = mix(10, // V1,V2 - Max,Avg
+                         30, // V3 - Min
+                         sceneMood);
 
   float newX = interpolatedTextureCoordinates.x + theta;
   float newY = interpolatedTextureCoordinates.y;

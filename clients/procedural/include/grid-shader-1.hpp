@@ -48,8 +48,13 @@ public:
     return *this;
   }
 
+  GridShader1 &setsceneMood(const float &mood) {
+    setUniform(sceneMoodUniform, mood);
+    return *this;
+  }
+
 private:
   Int viewProjectionMatrixUniform, transformationMatrixUniform,
       baseColorUniform, accent1ColorUniform, accent2ColorUniform,
-      numSlicesUniform, thetaUniform;
+      numSlicesUniform, thetaUniform, sceneMoodUniform;
 };
