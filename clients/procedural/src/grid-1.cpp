@@ -88,6 +88,17 @@ NeonGridRenderable1::NeonGridRenderable1()
 NeonGridRenderable1::~NeonGridRenderable1() {}
 
 void NeonGridRenderable1::render(double dTime) {
+  static float theta = 0;
+
+  const float scale = 0.1;
+
+  dTime *= scale;
+
+  theta += dTime;
+  while (theta > 1000) {
+    theta -= 1000;
+  }
+
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
                   "NeonGridRenderable1 - Render [%f]", dTime);
 
@@ -96,7 +107,8 @@ void NeonGridRenderable1::render(double dTime) {
       .setBaseColor(baseColor)
       .setAccent1Color(accentColor1)
       .setAccent2Color(accentColor2)
-      .setNumSlices(numSlices);
+      .setNumSlices(numSlices)
+      .setTheta(theta / 1000);
 
   mesh.draw(shader);
 }

@@ -43,8 +43,13 @@ public:
     return *this;
   }
 
+  GridShader1 &setTheta(const float &theta) {
+    setUniform(thetaUniform, theta);
+    return *this;
+  }
+
 private:
   Int viewProjectionMatrixUniform, transformationMatrixUniform,
       baseColorUniform, accent1ColorUniform, accent2ColorUniform,
-      numSlicesUniform;
+      numSlicesUniform, thetaUniform;
 };
