@@ -5,6 +5,7 @@
 #include "capnp/list.h"
 #include "debuglogger.hpp"
 #include "grid-1.hpp"
+#include "mountain-1.hpp"
 #include "pulse_audio_stream.hpp"
 #include <Corrade/Utility/DebugStl.h>
 #include <Magnum/GL/Buffer.h>

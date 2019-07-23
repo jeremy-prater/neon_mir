@@ -94,6 +94,7 @@ NeonReleaseDemo::~NeonReleaseDemo() {
 void NeonReleaseDemo::initalizeRenderData() {
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "%s", __func__);
   renderObjects["grid1"] = new NeonGrid1();
+  renderObjects["mountain1"] = new NeonMountain1();
   drawEvent();
 }
 

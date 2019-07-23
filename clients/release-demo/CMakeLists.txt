@@ -42,6 +42,8 @@ set(NEON_GFX_SRC
   ${PROJECT_SOURCE_DIR}/src/spectrum-ring-buffer.cpp
   ${PROJECT_SOURCE_DIR}/../procedural/src/grid-1.cpp
   ${PROJECT_SOURCE_DIR}/../procedural/src/grid-shader-1.cpp
+  ${PROJECT_SOURCE_DIR}/../procedural/src/mountain-1.cpp
+  ${PROJECT_SOURCE_DIR}/../procedural/src/mountain-shader-1.cpp
   neon.session.capnp.c++
 )
 
