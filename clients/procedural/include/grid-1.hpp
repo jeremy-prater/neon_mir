@@ -22,9 +22,12 @@ public:
   NeonGridRenderable1();
   virtual ~NeonGridRenderable1();
 
+  void baseHit();
   void render(double dTime) override;
 
 private:
+  float dMode;
+
   Magnum::Color3 baseColor;
   Magnum::Color3 accentColor1;
   Magnum::Color3 accentColor2;
@@ -43,6 +46,7 @@ public:
   ~NeonGrid1();
 
   virtual void render(double dTime) override;
+  void baseHit() { grid1.baseHit(); }
 
 private:
   NeonGridRenderable1 grid1;

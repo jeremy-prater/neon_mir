@@ -44,6 +44,9 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
                   "Booting on OpenGL %d using %s", version,
                   GL::Context::current().rendererString().c_str());
 
+  sceneManager.eventFired.connect(
+      boost::bind(&NeonReleaseDemo::eventFired, this, _1, _2, _3, _4, _5));
+
   sceneManager.updateSpectrumConfig(rs.get("test1").c_str());
   initalizeRenderData();
 
@@ -76,8 +79,6 @@ NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
   while (!shutdown) {
     // Just for fun...
     updateRenderData();
-
-    // usleep(50 * 1000); // 20 FPS @ 50 ms/frame
   }
 }
 
@@ -96,7 +97,27 @@ void NeonReleaseDemo::initalizeRenderData() {
   drawEvent();
 }
 
-void NeonReleaseDemo::updateRenderData() { drawEvent(); }
+void NeonReleaseDemo::updateRenderData() {
+  if (!spectrumDataMeanEmpty()) {
+    auto audioData = spectrumDataMeanGetSlice();
+    logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "audioData %x",
+                    audioData);
+    sceneManager.updateSpectrumData(audioData);
+  }
+
+  drawEvent();
+}
+
+void NeonReleaseDemo::eventFired(std::string name, const double frequency,
+                                 uint32_t position, uint32_t size,
+                                 const float *data) {
+  logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Audio Event Fired [%s]",
+                  name.c_str());
+
+  if (name == "bass hit") {
+    static_cast<NeonGrid1 *>(renderObjects["grid1"])->baseHit();
+  }
+}
 
 Matrix4 *NeonReleaseDemo::GetProjection() { return &projection; }
 

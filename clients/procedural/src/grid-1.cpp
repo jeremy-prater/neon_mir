@@ -44,8 +44,8 @@ const TriangleVertex data[]{{{planeSize, planeSize, zDepth}, {1.0f, 1.0f}},
                             {{0, -planeSize, zDepth}, {0.0f, 0.0f}}};
 
 NeonGridRenderable1::NeonGridRenderable1()
-    : logger("NeonGridRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
-             false) {
+    : dMode(0), logger("NeonGridRenderable1",
+                       DebugLogger::DebugColor::COLOR_CYAN, false) {
   MAGNUM_ASSERT_GL_VERSION_SUPPORTED(Magnum::GL::Version::GL330);
   const Magnum::Utility::Resource rs{"shaders"};
 
@@ -87,8 +87,12 @@ NeonGridRenderable1::NeonGridRenderable1()
 
 NeonGridRenderable1::~NeonGridRenderable1() {}
 
+void NeonGridRenderable1::baseHit() { dMode = 50; }
+
 void NeonGridRenderable1::render(double dTime) {
   static float theta = 0;
+
+  static float delta = 0;
 
   const float scale = 0.1;
 
@@ -97,6 +101,17 @@ void NeonGridRenderable1::render(double dTime) {
   theta += dTime;
   while (theta > 1000) {
     theta -= 1000;
+  }
+
+  delta += dTime * dMode;
+  if (delta > 600) {
+    delta = 600;
+    dMode = -(dMode / 2);
+  }
+
+  if (delta < 0) {
+    delta = 50;
+    dMode = 0;
   }
 
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -109,7 +124,7 @@ void NeonGridRenderable1::render(double dTime) {
       .setAccent2Color(accentColor2)
       .setNumSlices(numSlices)
       .setTheta(theta / 1000)
-      .setsceneMood(theta / 1000);
+      .setsceneMood(delta / 1000);
 
   mesh.draw(shader);
 }

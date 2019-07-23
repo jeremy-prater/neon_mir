@@ -45,7 +45,7 @@ public:
   float *spectrumDataMeanGetSlice() const noexcept;
   void spectrumDataMeanFillSlice(uint32_t index, float data);
   void spectrumDataMeanPushSlice() noexcept;
-  inline bool spectrumDataMeanEmpty() const noexcept;
+  bool spectrumDataMeanEmpty() const noexcept;
 
   SceneManager sceneManager;
 
@@ -59,7 +59,7 @@ private:
   std::unordered_map<std::string, NeonObject *> renderObjects;
 
   // Generic ring buffer function
-  inline void spectrumDataCheckSlice(uint32_t &position) const;
+  void spectrumDataCheckSlice(uint32_t &position) const;
 
   // There could also be max, min, median...
   // WTF even is this? It's all mutable...
@@ -73,6 +73,9 @@ private:
   void updateRenderData();
   void updateData();
   void drawEvent() override;
+
+  void eventFired(std::string name, const double frequency, uint32_t position,
+                  uint32_t size, const float *data);
 
   // Audio stuff
   std::thread audioWorker;

@@ -152,16 +152,20 @@ void NeonPulseInput::audioDataCallback(pa_stream *p, size_t nbytes,
   } else if (audioDataSize) {
     // We actually have audio data!
     // We'll just assume float32 for now...
-    for (int index = 0; index < audioDataSize / 4; index++) {
-      const float value = audioData[index];
-      if ((value < -1) || (value > 1)) {
-        instance->logger.WriteLog(
-            DebugLogger::DebugLevel::DEBUG_ERROR,
-            "Incoming data is outside valid range [-1, 1] ==> %f", value);
-        assert(0);
-      }
+    float *rawValues = static_cast<float *>(malloc(nbytes));
+    memcpy(rawValues, audioData, nbytes);
+
+    for (int index = 0; index < audioDataSize / sizeof(float); index++) {
+      if (rawValues[index] > 1)
+        rawValues[index] = 1;
+      if (rawValues[index] < -1)
+        rawValues[index] = -1;
     }
-    instance->newData(audioData, audioDataSize / 4);
+
+    instance->newData(rawValues, audioDataSize / 4);
+
+    free(rawValues);
+
     pa_stream_drop(p);
   } else {
     instance->logger.WriteLog(

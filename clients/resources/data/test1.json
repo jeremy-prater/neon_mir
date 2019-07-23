@@ -6,19 +6,19 @@
         "bass hit": {
             "min": 300,
             "max": 500,
-            "threshold": 0.3,
-            "cooldown": 1000
+            "threshold": 0.25,
+            "cooldown": 200
         },
         "mid hit": {
             "min": 1000,
             "max": 2000,
-            "threshold": 0.3,
+            "threshold": 0.25,
             "cooldown": 700
         },
         "high hit": {
             "min": 3500,
             "max": 5000,
-            "threshold": 0.3,
+            "threshold": 0.25,
             "cooldown": 300
         }
     }

@@ -99,7 +99,8 @@ void AudioProcessor::audioProcessorLoop() {
     }
 
     {
-      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum Data");
+      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Get Spectrum
+      // Data");
 
       auto request = controllerServer.getSpectrumDataRequest();
       request.setUuid(spectrumUUID);
@@ -116,7 +117,8 @@ void AudioProcessor::audioProcessorLoop() {
       int index = 0;
       auto instance = NeonReleaseDemo::getInstance();
       while (index < count) {
-        // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Frame %d ==> %d",
+        // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Frame %d ==>
+        // %d",
         //                 index, count);
         int indexOffset = index * NUM_SLICES;
         for (int sliceIndex = 0; sliceIndex < NUM_SLICES; sliceIndex++) {
@@ -150,22 +152,6 @@ void AudioProcessor::audioProcessorLoop() {
 
 void AudioProcessor::processAudio(const float *musicData,
                                   const size_t musicDataLength) const noexcept {
-  // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Processing Chunk
-  // [%d]",
-  //                 musicDataLength / 4);
-
-  for (size_t index = 0; index < musicDataLength; index++) {
-    const float value = musicData[index];
-    if ((value < -1) || (value > 1)) {
-      logger.WriteLog(DebugLogger::DebugLevel::DEBUG_ERROR,
-                      "Incoming Audio data out of range [-1, 1] ==> %f",
-                      static_cast<double>(value));
-      assert(0);
-    } else {
-      // logger.WriteLog(DebugLogger::DebugLevel::DEBUG_WARNING,
-      //                 "Incoming Audio data in range ==> %f", value);
-    }
-  }
   {
     std::scoped_lock<std::mutex> lock(audioQueueMutex);
     audioQueue.push_back(

@@ -17,9 +17,10 @@ void main() {
                        1.20, // V3 - Min
                        sceneMood);
 
-  float widthScale = mix(10, // V1,V2 - Max,Avg
-                         30, // V3 - Min
-                         sceneMood);
+  float widthScale = 15;
+  // mix(10, // V1,V2 - Max,Avg
+  // 30, // V3 - Min
+  // sceneMood);
 
   float newX = interpolatedTextureCoordinates.x + theta;
   float newY = interpolatedTextureCoordinates.y;
