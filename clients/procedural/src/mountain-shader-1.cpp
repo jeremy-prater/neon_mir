@@ -32,5 +32,5 @@ MountainShader1::MountainShader1() {
   accent2ColorUniform = uniformLocation("accent2Color");
   numSlicesUniform = uniformLocation("numSlices");
   thetaUniform = uniformLocation("theta");
-  sceneMoodUniform = uniformLocation("sceneMood");
+  spectrumUniform = uniformLocation("spectrum");
 }

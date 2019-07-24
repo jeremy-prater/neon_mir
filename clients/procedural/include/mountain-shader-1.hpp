@@ -38,23 +38,19 @@ public:
     return *this;
   }
 
-  MountainShader1 &setNumSlices(const uint32_t &nSlice) {
-    setUniform(numSlicesUniform, nSlice);
-    return *this;
-  }
-
   MountainShader1 &setTheta(const float &theta) {
     setUniform(thetaUniform, theta);
     return *this;
   }
 
-  MountainShader1 &setsceneMood(const float &mood) {
-    setUniform(sceneMoodUniform, mood);
+  MountainShader1 &setSpectrum(const Containers::ArrayView<const float> data, const uint32_t count) {
+    setUniform(spectrumUniform, data);
+    setUniform(numSlicesUniform, count);
     return *this;
   }
 
 private:
   Int viewProjectionMatrixUniform, transformationMatrixUniform,
       baseColorUniform, accent1ColorUniform, accent2ColorUniform,
-      numSlicesUniform, thetaUniform, sceneMoodUniform;
+      numSlicesUniform, thetaUniform, spectrumUniform;
 };

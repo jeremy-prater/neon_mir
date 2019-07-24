@@ -115,8 +115,15 @@ void NeonReleaseDemo::eventFired(std::string name, const double frequency,
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Audio Event Fired [%s]",
                   name.c_str());
 
-  if (name == "bass hit") {
+  (void)frequency;
+  (void)position;
+
+  if (name == "grid") {
     static_cast<NeonGrid1 *>(renderObjects["grid1"])->baseHit();
+  }
+  if (name == "mountain") {
+    static_cast<NeonMountain1 *>(renderObjects["mountain1"])
+        ->updateSpectrum(data, size);
   }
 }
 

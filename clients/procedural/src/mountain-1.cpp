@@ -15,7 +15,7 @@ using namespace Magnum::Math::Literals;
 
 NeonMountain1::NeonMountain1()
     : logger("NeonMountain1", DebugLogger::DebugColor::COLOR_CYAN, false) {
-  addRenderable(&grid1);
+  addRenderable(&mountain1);
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO, "Created Mountain1");
   // transform = Magnum::Matrix4::translation(Magnum::Vector3::zAxis(-100)) *
   //             Magnum::Matrix4::translation(Magnum::Vector3::xAxis(size / 2))
@@ -30,28 +30,32 @@ void NeonMountain1::render(double dTime) {
   NeonObject::render(dTime);
 }
 
+void NeonMountain1::updateSpectrum(const float *data, uint32_t count) {
+  mountain1.updateSpectrum(data, count);
+}
+
 struct TriangleVertex {
   Vector3 position;
   Vector2 textCoord;
 };
 
 const float planeSize = 1000.0f;
-const float zDepth = -100;
+const float zDepth = -100.0f;
 
 const TriangleVertex data[]{
-    {{planeSize, planeSize * 0.1, zDepth}, {1.0f, 1.0f}},
-    {{planeSize, planeSize * 0.1, -zDepth * 2}, {1.0f, 0.0f}},
-    {{0, planeSize, zDepth}, {0.0f, 1.0f}},
-    {{0, planeSize, -zDepth * 2}, {0.0f, 0.0f}},
+    {{planeSize, planeSize * 0.1f, zDepth}, {1.0f, 1.0f}},
+    {{planeSize, planeSize * 0.1f, -zDepth * 2}, {1.0f, 0.0f}},
+    {{0.0f, planeSize, zDepth}, {0.0f, 1.0f}},
+    {{0.0f, planeSize, -zDepth * 2}, {0.0f, 0.0f}},
 
-    {{planeSize, -planeSize * 0.1, zDepth}, {1.0f, 1.0f}},
-    {{0, -planeSize, zDepth}, {0.0f, 1.0f}},
-    {{planeSize, -planeSize * 0.1, -zDepth * 2}, {1.0f, 0.0f}},
-    {{0, -planeSize, -zDepth * 2}, {0.0f, 0.0f}}};
+    {{planeSize, -planeSize * 0.1f, zDepth}, {1.0f, 1.0f}},
+    {{0.0f, -planeSize, zDepth}, {0.0f, 1.0f}},
+    {{planeSize, -planeSize * 0.1f, -zDepth * 2}, {1.0f, 0.0f}},
+    {{0.0f, -planeSize, -zDepth * 2}, {0.0f, 0.0f}}};
 
 NeonMountainRenderable1::NeonMountainRenderable1()
-    : dMode(0), logger("NeonMountainRenderable1",
-                       DebugLogger::DebugColor::COLOR_CYAN, false) {
+    : logger("NeonMountainRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
+             false) {
   MAGNUM_ASSERT_GL_VERSION_SUPPORTED(Magnum::GL::Version::GL330);
   const Magnum::Utility::Resource rs{"shaders"};
 
@@ -89,19 +93,30 @@ NeonMountainRenderable1::NeonMountainRenderable1()
                        GridShader1::TextureCoordinates{});
 
   projection = NeonReleaseDemo::getInstance()->GetProjection();
+
+  numSlices = 64;
+  for (int index = 0; index < numSlices; index++) {
+    spectrum[index] = static_cast<float>(rand()) / RAND_MAX;
+  }
 }
 
 NeonMountainRenderable1::~NeonMountainRenderable1() {}
 
-void NeonMountainRenderable1::baseHit() { dMode = 50; }
+void NeonMountainRenderable1::updateSpectrum(const float *data,
+                                             uint32_t count) {
+  numSlices = count;
+  for (int index = 0; index < numSlices; index++) {
+    spectrum[index] = data[index] * 40;
+    if (spectrum[index] > 1) {
+      spectrum[index] = 1;
+    }
+  }
+}
 
 void NeonMountainRenderable1::render(double dTime) {
-  static float theta = 0;
+  static double theta = 0;
 
-  static float delta = 0;
-
-  const float scale = 0.1;
-
+  const double scale = 0.1;
   dTime *= scale;
 
   theta += dTime;
@@ -109,15 +124,10 @@ void NeonMountainRenderable1::render(double dTime) {
     theta -= 1000;
   }
 
-  delta += dTime * dMode;
-  if (delta > 600) {
-    delta = 600;
-    dMode = -(dMode / 2);
-  }
+  const float decay = 1.0f - (dTime / 100);
 
-  if (delta < 0) {
-    delta = 50;
-    dMode = 0;
+  for (int index = 0; index < numSlices; index++) {
+    spectrum[index] *= decay;
   }
 
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
@@ -128,9 +138,8 @@ void NeonMountainRenderable1::render(double dTime) {
       .setBaseColor(baseColor)
       .setAccent1Color(accentColor1)
       .setAccent2Color(accentColor2)
-      .setNumSlices(numSlices)
       .setTheta(theta / 1000)
-      .setsceneMood(delta / 1000);
+      .setSpectrum(spectrum, numSlices);
 
   mesh.draw(shader);
 }

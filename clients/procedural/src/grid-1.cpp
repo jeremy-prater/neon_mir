@@ -36,12 +36,12 @@ struct TriangleVertex {
 };
 
 const float planeSize = 1000.0f;
-const float zDepth = -100;
+const float zDepth = -100.0f;
 
 const TriangleVertex data[]{{{planeSize, planeSize, zDepth}, {1.0f, 1.0f}},
-                            {{0, planeSize, zDepth}, {0.0f, 1.0f}},
+                            {{0.0f, planeSize, zDepth}, {0.0f, 1.0f}},
                             {{planeSize, -planeSize, zDepth}, {1.0f, 0.0f}},
-                            {{0, -planeSize, zDepth}, {0.0f, 0.0f}}};
+                            {{0.0f, -planeSize, zDepth}, {0.0f, 0.0f}}};
 
 NeonGridRenderable1::NeonGridRenderable1()
     : dMode(0), logger("NeonGridRenderable1",
@@ -90,11 +90,11 @@ NeonGridRenderable1::~NeonGridRenderable1() {}
 void NeonGridRenderable1::baseHit() { dMode = 50; }
 
 void NeonGridRenderable1::render(double dTime) {
-  static float theta = 0;
+  static double theta = 0;
 
-  static float delta = 0;
+  static double delta = 0;
 
-  const float scale = 0.1;
+  const double scale = 0.1;
 
   dTime *= scale;
 

@@ -22,20 +22,20 @@ public:
   NeonMountainRenderable1();
   virtual ~NeonMountainRenderable1();
 
-  void baseHit();
+  void updateSpectrum(const float *data, uint32_t count);
   void render(double dTime) override;
 
 private:
-  float dMode;
+  uint32_t numSlices;
+  float spectrum[64];
 
   Magnum::Color3 baseColor;
   Magnum::Color3 accentColor1;
   Magnum::Color3 accentColor2;
-  uint32_t numSlices;
 
   Magnum::GL::Buffer vertexBuffer;
   Magnum::GL::Mesh mesh;
-  GridShader1 shader;
+  MountainShader1 shader;
 
   DebugLogger logger;
 };
@@ -45,10 +45,10 @@ public:
   NeonMountain1();
   ~NeonMountain1();
 
+  void updateSpectrum(const float *data, uint32_t count);
   virtual void render(double dTime) override;
-  void baseHit() { grid1.baseHit(); }
 
 private:
-  NeonMountainRenderable1 grid1;
+  NeonMountainRenderable1 mountain1;
   DebugLogger logger;
 };
