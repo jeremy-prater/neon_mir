@@ -56,7 +56,7 @@ NeonMountainRenderable1::NeonMountainRenderable1()
   const Magnum::Utility::Resource rs{"shaders"};
 
   rapidjson::Document gridConfigJson;
-  auto jsonString = rs.get("grid1.json");
+  auto jsonString = rs.get("mountain-1_config");
   gridConfigJson.Parse(jsonString.c_str());
 
   logger.WriteLog(DebugLogger::DebugLevel::DEBUG_INFO,
