@@ -12,7 +12,12 @@ NeonReleaseDemo *NeonReleaseDemo::getInstance() { return instance; }
 
 NeonReleaseDemo::NeonReleaseDemo(const Arguments &arguments)
     : Platform::Application{arguments,
-                            Configuration{}.setTitle("Neon MIR Scene Test 1")},
+                            Configuration{}
+                                .setTitle("Neon MIR Scene Test 1")
+                                .setSize({1920,1080})
+                                .setWindowFlags(
+                                    Magnum::Platform::Sdl2Application::
+                                        Configuration::WindowFlag::Fullscreen)},
       spectrumDataMeanHead(0), spectrumDataMeanTail(RING_SIZE - 1),
       shutdown(false),
       logger("RenderPipe", DebugLogger::DebugColor::COLOR_GREEN, false) {

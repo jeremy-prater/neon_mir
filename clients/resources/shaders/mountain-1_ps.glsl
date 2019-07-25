@@ -30,9 +30,11 @@ void main() {
   int yRatio = 50;
   int yThreshold = 25;
 
-  if ((int(interpolatedTextureCoordinates.y * yScale) % yRatio >= yThreshold) &&
-      (int(interpolatedTextureCoordinates.x * xScale) % xRatio >= xThreshold))
+  int yValue = int(interpolatedTextureCoordinates.y * yScale) % yRatio;
+  int xValue = int(interpolatedTextureCoordinates.x * xScale) % xRatio;
+  if ((yValue % yRatio >= yThreshold) && (xValue % xRatio >= xThreshold)) {
     outColor = spectrumColor;
+  }
 
   fragmentColor = outColor;
 }

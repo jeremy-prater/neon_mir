@@ -104,8 +104,8 @@ void NeonGridRenderable1::render(double dTime) {
   }
 
   delta += dTime * dMode;
-  if (delta > 600) {
-    delta = 600;
+  if (delta > 400) {
+    delta = 400;
     dMode = -(dMode / 2);
   }
 

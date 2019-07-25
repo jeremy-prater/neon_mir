@@ -5,9 +5,9 @@
     "events": {
         "grid": {
             "min": 20,
-            "max": 3000,
-            "threshold": 0.20,
-            "cooldown": 100
+            "max": 300,
+            "threshold": 0.175,
+            "cooldown": 300
         },
         "mountain": {
             "min": 500,

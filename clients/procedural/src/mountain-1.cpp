@@ -45,13 +45,13 @@ const float zDepth = -100.0f;
 const TriangleVertex data[]{
     {{planeSize, planeSize * 0.1f, zDepth}, {1.0f, 1.0f}},
     {{planeSize, planeSize * 0.1f, -zDepth * 2}, {1.0f, 0.0f}},
-    {{0.0f, planeSize, zDepth}, {0.0f, 1.0f}},
-    {{0.0f, planeSize, -zDepth * 2}, {0.0f, 0.0f}},
+    {{200.0f, planeSize / 2, zDepth}, {0.0f, 1.0f}},
+    {{200.0f, planeSize / 2, -zDepth * 2}, {0.0f, 0.0f}},
 
     {{planeSize, -planeSize * 0.1f, zDepth}, {1.0f, 1.0f}},
-    {{0.0f, -planeSize, zDepth}, {0.0f, 1.0f}},
+    {{200.0f, -planeSize / 2, zDepth}, {0.0f, 1.0f}},
     {{planeSize, -planeSize * 0.1f, -zDepth * 2}, {1.0f, 0.0f}},
-    {{0.0f, -planeSize, -zDepth * 2}, {0.0f, 0.0f}}};
+    {{200.0f, -planeSize / 2, -zDepth * 2}, {0.0f, 0.0f}}};
 
 NeonMountainRenderable1::NeonMountainRenderable1()
     : logger("NeonMountainRenderable1", DebugLogger::DebugColor::COLOR_CYAN,
@@ -106,7 +106,7 @@ void NeonMountainRenderable1::updateSpectrum(const float *data,
                                              uint32_t count) {
   numSlices = count;
   for (int index = 0; index < numSlices; index++) {
-    spectrum[index] = data[index] * 40;
+    spectrum[index] = data[index] * 25;
     if (spectrum[index] > 1) {
       spectrum[index] = 1;
     }
